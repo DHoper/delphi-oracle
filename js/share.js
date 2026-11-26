@@ -3,6 +3,8 @@
 import { CARDS, SPREADS, ROMAN, META } from "./tarot/data.js";
 import { CONFIG } from "./config.js";
 import { artPath, hasArt } from "./tarot/cardface.js";
+import { EPIC } from "./tarot/epic.js";
+import { MYTH } from "./tarot/myth.js";
 
 const SP = ["one", "time", "choice", "mind"], TP = ["auto", "love", "career", "money", "health", "growth", "gen"];
 const b36 = (n, len) => n.toString(36).padStart(len, "0");
@@ -95,9 +97,12 @@ function excerpt(R, ai, n) {
   if (t.length > n) { const cut = t.slice(0, n), k = Math.max(cut.lastIndexOf("。"), cut.lastIndexOf("；"), cut.lastIndexOf("，")); t = (k > n * 0.6 ? cut.slice(0, k) : cut) + "……"; }
   return t;
 }
-async function fontsReady() {
-  await Promise.all([`700 64px ${DISP}`, `600 30px ${LATIN}`, `400 30px ${BODY}`, `600 30px ${BODY}`].map(f => document.fonts.load(f, "神諭塔羅ORACLE汝")).concat(document.fonts.ready)).catch(() => {});
+// 網頁字型（思源宋體）是依字分段載入的：畫圖前先把這張圖要用到的每個字所在的分段都載入，否則沒載到的字會退回系統字型
+async function fontsReady(text = "") {
+  const t = "神諭塔羅ORACLE汝" + text;
+  await Promise.all([`700 64px ${DISP}`, `600 30px ${DISP}`, `600 30px ${LATIN}`, `400 30px ${BODY}`, `600 30px ${BODY}`].map(f => document.fonts.load(f, t)).concat(document.fonts.ready)).catch(() => {});
 }
+const allText = (R, ai, question) => [ai, question, R.verdict.text, R.verdict.detail, ...R.cards.map(c => c.name + c.position + c.orientation + (EPIC[c.id] || []).join("") + (MYTH[c.id] || [""])[0] + (c.reading || ""))].join("");
 function drawCard(ctx, c, art, frame, x, y, cw, ch) {
   ctx.save(); ctx.shadowColor = "rgba(243,212,139,.35)"; ctx.shadowBlur = 40; ctx.fillStyle = "#000"; ctx.fillRect(x, y, cw, ch); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, cw, ch); ctx.clip();
@@ -118,7 +123,7 @@ function background(ctx, bg, w, h, strength = 1) {
 
 // 直幅圖卡（1080×1920，限時動態）：讖語為主標、正式牌圖、女祭司之言摘錄
 export async function renderShareCard(R, { shared = false, ai = "", question = "" } = {}) {
-  await fontsReady();
+  await fontsReady(allText(R, ai, question));
   const [bg, frame, divider, cornerTR, cornerBR] = await Promise.all(["assets/sanctum/temple-portrait.webp", "assets/ui/slot-frame.webp", "assets/ui/divider.webp", "assets/ui/corner-tr.webp", "assets/ui/corner-br.webp"].map(loadImg));
   const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
@@ -167,9 +172,89 @@ export async function renderShareCard(R, { shared = false, ai = "", question = "
   return cv;
 }
 
+// 長圖（寬 1080、高度依內容）：完整的女祭司之言＋每張牌的「牌上的故事」，收到的人光看圖就讀得到整則神諭
+export async function renderLongCard(R, { shared = false, ai = "", question = "" } = {}) {
+  await fontsReady(allText(R, ai, question));
+  const [bg, frame, divider, cornerTR, cornerBR] = await Promise.all(["assets/sanctum/temple-portrait.webp", "assets/ui/slot-frame.webp", "assets/ui/divider.webp", "assets/ui/corner-tr.webp", "assets/ui/corner-br.webp"].map(loadImg));
+  const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
+  const m = document.createElement("canvas").getContext("2d"); // 量字用
+  const n = R.cards.length, cw = n === 1 ? 400 : 300, ch = cw * 1252 / 732, gap = 36, total = n * cw + (n - 1) * gap, x0 = (W - total) / 2;
+  const { omen, body } = splitOracle(ai), hero = omen || R.verdict.text;
+  const paras = body.length ? body : [R.verdict.detail, ...readingLines(R)];
+  m.font = `600 32px ${DISP}`; const ql = question ? wrap(m, `所問「${question}」`, 900, 2).slice(0, 2) : [];
+  m.font = `700 60px ${DISP}`; const hl = byComma(m, hero, 920, 6).slice(0, 3);
+  m.font = `400 34px ${BODY}`; const pl = paras.map(p => wrap(m, p, 880, 1));
+  m.font = `400 29px ${BODY}`; const stories = R.cards.map(c => { const ep = EPIC[c.id], my = MYTH[c.id]; return ep ? { head: `${R.cards.length > 1 ? c.position + "・" : ""}${c.name}${c.rev ? "・逆" : ""}${my ? "　" + my[0] : ""}`, lines: wrap(m, ep[c.rev ? 1 : 0], 860, 1) } : null; }).filter(Boolean);
+  // 版面高度
+  const LH = 60, SLH = 48;
+  let Ht = 250 + (ql.length ? ql.length * 46 + 30 : 0) + (n > 1 ? 50 : 10) + ch + 90 + 40 + hl.length * 84 + 50;
+  Ht += 90 + pl.reduce((a, l) => a + l.length * LH + 34, 0) + 40;
+  if (stories.length) Ht += 140 + stories.reduce((a, s) => a + 56 + s.lines.length * SLH + 40, 0);
+  Ht += 420;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = Math.round(Ht); const ctx = cv.getContext("2d"), H2 = cv.height;
+  // 底：上方是內殿全景，往下沉入深色
+  ctx.fillStyle = "#070508"; ctx.fillRect(0, 0, W, H2);
+  if (bg) { const s = W / bg.width; ctx.drawImage(bg, 0, 0, W, bg.height * s); }
+  let g = ctx.createLinearGradient(0, 0, 0, Math.min(H2, 1935));
+  g.addColorStop(0, "rgba(7,5,8,.8)"); g.addColorStop(0.12, "rgba(7,5,8,.4)"); g.addColorStop(0.35, "rgba(7,5,8,.62)"); g.addColorStop(0.7, "rgba(7,5,8,.9)"); g.addColorStop(1, "rgba(7,5,8,1)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, Math.min(H2, 1935));
+  g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, "rgba(0,0,0,.5)"); g.addColorStop(0.2, "rgba(0,0,0,0)"); g.addColorStop(0.8, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.5)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H2);
+  // 兩側細金線框（像卷軸的邊）
+  ctx.strokeStyle = "rgba(201,163,91,.35)"; ctx.lineWidth = 1.5; ctx.strokeRect(40, 40, W - 80, H2 - 80); ctx.strokeStyle = "rgba(201,163,91,.18)"; ctx.strokeRect(52, 52, W - 104, H2 - 104);
+  const cs = 180;
+  if (cornerTR) { ctx.drawImage(cornerTR, W - cs - 24, 24, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerTR, -cs - 24, 24, cs, cs); ctx.restore(); }
+  if (cornerBR) { ctx.drawImage(cornerBR, W - cs - 24, H2 - cs - 24, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerBR, -cs - 24, H2 - cs - 24, cs, cs); ctx.restore(); }
+  ctx.textBaseline = "alphabetic"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 16;
+  ctx.font = `700 64px ${DISP}`; ctx.fillStyle = goldFill(ctx, 90, 160); spaced(ctx, "神諭塔羅", W / 2, 150, 30);
+  ctx.font = `600 22px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, "ORACLE TAROT · DELPHI", W / 2, 194, 7);
+  let y = 250;
+  if (ql.length) { ctx.font = `600 32px ${DISP}`; ctx.fillStyle = "#e6d3a6"; ql.forEach((l, k) => spaced(ctx, l, W / 2, y + 30 + k * 46, 2)); y += ql.length * 46 + 30; }
+  const top = y + (n > 1 ? 50 : 10);
+  R.cards.forEach((c, k) => {
+    const x = x0 + k * (cw + gap);
+    ctx.shadowBlur = 8; ctx.fillStyle = "#c9b48a"; ctx.font = `600 28px ${DISP}`;
+    if (n > 1) spaced(ctx, c.position, x + cw / 2, top - 18, 10);
+    drawCard(ctx, c, arts[k], frame, x, top, cw, ch);
+    ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10; ctx.font = `700 ${c.name.length > 4 ? 30 : 34}px ${DISP}`; ctx.fillStyle = "#f3d48b";
+    spaced(ctx, c.name + (c.rev ? "・逆" : ""), x + cw / 2, top + ch + 54, 3);
+  });
+  y = top + ch + 90 + 40 + 40;
+  ctx.font = `700 60px ${DISP}`; ctx.shadowColor = "rgba(0,0,0,.95)"; ctx.shadowBlur = 18;
+  hl.forEach((l, k) => { ctx.fillStyle = goldFill(ctx, y + k * 84 - 54, y + k * 84 + 10); spaced(ctx, l, W / 2, y + k * 84, 6); });
+  y += hl.length * 84 + 10;
+  // 女祭司之言（全文）
+  const section = (title, yy) => { if (divider) { const dw = 520, dh = dw * divider.height / divider.width; ctx.drawImage(divider, (W - dw) / 2, yy - 6, dw, dh); } ctx.shadowBlur = 8; ctx.font = `700 34px ${DISP}`; ctx.fillStyle = "#d9ac55"; spaced(ctx, title, W / 2, yy + dhOf(divider, 520) + 40, 16); return yy + dhOf(divider, 520) + 90; };
+  y = section(ai ? "女祭司之言" : "神諭細解", y + 40) + 24;
+  ctx.font = `400 34px ${BODY}`; ctx.fillStyle = "#ecdfc2"; ctx.shadowBlur = 6;
+  pl.forEach(lines => { lines.forEach((l, k) => { ctx.fillText(l, 100, y + k * LH); }); y += lines.length * LH + 34; });
+  if (ai) { ctx.font = `600 26px ${DISP}`; ctx.fillStyle = "#a99270"; spaced(ctx, "——德爾菲女祭司皮媞亞", W - 100, y - 4, 4, "right"); }
+  y += 40;
+  // 牌上的故事
+  if (stories.length) {
+    y = section("牌上的故事", y + 20) + 16;
+    stories.forEach(s => {
+      ctx.font = `700 32px ${DISP}`; ctx.fillStyle = "#f3d48b"; ctx.fillText(s.head, 100, y);
+      y += 56; ctx.font = `400 29px ${BODY}`; ctx.fillStyle = "#d9cba9";
+      s.lines.forEach((l, k) => ctx.fillText(l, 110, y + k * SLH)); y += s.lines.length * SLH + 40;
+    });
+  }
+  // 頁尾
+  if (divider) { const dw = 600, dh = dw * divider.height / divider.width; ctx.drawImage(divider, (W - dw) / 2, H2 - 260, dw, dh); }
+  ctx.font = `600 34px ${DISP}`; ctx.fillStyle = "#e9cf91"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10;
+  spaced(ctx, shared ? "在巨蟒的凝視下，汝亦來求一諭" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H2 - 160, 6);
+  ctx.font = `600 24px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H2 - 110, 3);
+  return cv;
+}
+const dhOf = (img, w) => (img ? w * img.height / img.width : 14);
+// 沒有 AI 時，長圖的正文用古法解讀的段落（純文字）
+function readingLines(R) {
+  return (R.cards || []).map(c => `${R.cards.length > 1 ? c.position + "：" : ""}${c.name}${c.orientation}。${String(c.reading || "").replace(/<[^>]+>/g, "")}`).filter(Boolean);
+}
+
 // 橫幅預覽圖（1200×630）：分享連結在 LINE、Facebook、Threads 上顯示的那張圖
 export async function renderOG(R, { ai = "" } = {}) {
-  await fontsReady();
+  await fontsReady(allText(R, ai, ""));
   const [bg, frame] = await Promise.all(["assets/sanctum/temple-wide.webp", "assets/ui/slot-frame.webp"].map(loadImg));
   const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
   const w = 1200, h = 630, cv = document.createElement("canvas"); cv.width = w; cv.height = h; const ctx = cv.getContext("2d");
@@ -233,7 +318,8 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
       try { if (canShareFiles(file)) await navigator.share({ files: [file], text: text() + url }); else await navigator.share({ title: "神諭塔羅", text: text(), url }); }
       catch (e) { if (e && e.name !== "AbortError") say("無法開啟分享"); }
     }),
-    save: () => { const a = document.createElement("a"); a.href = blobURL; a.download = "oracle-tarot.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下神諭圖卡"); },
+    story: async () => { const cv = await renderShareCard(R, { shared, ai, question: withQ() ? question : "" }); const u = cv.toDataURL("image/jpeg", 0.9), a = document.createElement("a"); a.href = u; a.download = "oracle-tarot-story.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下限動版圖卡"); },
+    save: () => { const a = document.createElement("a"); a.href = blobURL; a.download = "oracle-tarot.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下神諭長圖"); },
     line: () => busy(async () => open(`https://line.me/R/share?text=${encodeURIComponent(text() + (await getLink()))}`)),
     facebook: () => busy(async () => open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(await getLink())}`)),
     threads: () => busy(async () => open(`https://www.threads.net/intent/post?text=${encodeURIComponent(text() + (await getLink()))}`)),
@@ -246,8 +332,8 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
   });
   async function paint() {
     img.removeAttribute("src"); sheet.classList.add("busy");
-    const cv = await renderShareCard(R, { shared, ai, question: withQ() ? question : "" });
-    blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9));
+    const cv = await renderLongCard(R, { shared, ai, question: withQ() ? question : "" });
+    blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.88)); img.dataset.long = cv.height > 2200 ? "1" : "";
     if (blobURL) URL.revokeObjectURL(blobURL); blobURL = URL.createObjectURL(blob); img.src = blobURL;
     sheet.classList.remove("busy");
   }

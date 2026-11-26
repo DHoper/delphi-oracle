@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060508">
+<title>神諭塔羅</title>
+<meta name="description" content="夜登德爾菲，步入內殿，在巨蟒皮同的凝視下抽出塔羅牌，領受汝之神諭。">
+<!-- 分享預覽（LINE、Facebook、Threads、Discord 等抓這幾行）；網址以 GitHub Pages 為準 -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="神諭塔羅">
+<meta property="og:title" content="神諭塔羅">
+<meta property="og:description" content="在巨蟒皮同的凝視下取一預兆、抽出汝之牌，領受一則神諭。">
+<meta property="og:url" content="https://dhoper.github.io/delphi-oracle/">
+<meta property="og:image" content="https://dhoper.github.io/delphi-oracle/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_TW">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="artifact-thumbnail" href="thumb.jpg">
+<link rel="preload" as="image" href="assets/gate/gate-portrait.webp" media="(max-aspect-ratio: 11/10)">
+<link rel="preload" as="image" href="assets/gate/gate-wide.webp" media="(min-aspect-ratio: 11/10)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+TC:wght@400;600;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="heat" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.045" numOctaves="2" seed="3" result="n"/>
+    <feOffset in="n" dy="0" result="m"><animate attributeName="dy" from="0" to="-220" dur="3.2s" repeatCount="indefinite"/></feOffset>
+    <feTile in="m" result="t"/>
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<div class="stage intro-on" id="stage" data-phase="ask">
+
+  <!-- 遠景：神殿後牆與門楣 -->
+  <!-- 內殿全景：神殿、巨蟒皮同、火盆、地縫與石桌出自同一張圖；手機用直幅、寬螢幕用橫幅
+       眼瞼另疊一層（同一張圖重繪成閉眼版，只取雙眼周圍），火星與地縫煙霧由程式疊在畫上的火盆與地縫 -->
+  <div class="serpent scene" id="serpent">
+    <img class="body" id="sceneImg" src="assets/sanctum/temple-portrait.webp" alt="">
+    <canvas class="gl" id="sceneGL" aria-hidden="true"></canvas>
+    <img class="lids" id="sceneLids" src="assets/sanctum/lids-portrait.webp" alt="" aria-hidden="true">
+    <i class="anc anc-l" data-fire="sparks"></i><i class="anc anc-r" data-fire="sparks"></i><i class="anc anc-fis" id="fissure"></i>
+    <div class="head" id="head" data-eye="open" hidden></div>
+  </div>
+
+  <div class="layer" data-depth="0.035">
+    <img class="pythia" id="pythia" src="assets/sanctum/pythia.webp" alt="">
+  </div>
+
+  <canvas class="fx" id="smoke" aria-hidden="true"></canvas>
+
+  <canvas class="fx" id="serpentBack" hidden></canvas>
+  <canvas class="fx" id="serpentFront" hidden></canvas>
+
+  <!-- 石桌：雙手、牌位、牌堆、牌扇 -->
+  <div class="table" id="table">
+    <div id="hands" hidden></div>
+    <div class="gaze" id="gaze" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="slots" id="slots"></div>
+  </div>
+  <div class="cards" id="cards"></div>
+
+  <canvas class="fx" id="fire" aria-hidden="true"></canvas>
+
+  <div class="knock" id="knock" hidden>
+    <p class="knock-count" id="knockCount" aria-live="polite"></p>
+    <button type="button" class="knock-skip" id="knockSkip" hidden>收起，展卷而讀</button>
+  </div>
+
+  <!-- 神諭之聲 -->
+  <p class="utter" id="utter" aria-live="polite"></p>
+
+  <!-- 介面 -->
+  <header class="top">
+    <a class="brand" href="./">神諭塔羅</a>
+    <div class="tools">
+      <button type="button" class="icon" id="sound" aria-pressed="false" aria-label="音效" title="音效"></button>
+    </div>
+  </header>
+
+  <!-- 求問：一次只做一件事。一、自火中取預兆　二、擇牌陣　三、刻下問題，按住封印獻上 -->
+  <form class="rite" id="ask" autocomplete="off" data-step="0">
+    <section class="step" data-step="0" aria-label="取一預兆">
+      <div class="brazier" id="brazier">
+        <div class="fire-art" aria-hidden="true"><img class="f1" src="assets/deco/flame.webp" alt=""><img class="f2" src="assets/deco/flame.webp" alt=""></div>
+        <img class="bowl" src="assets/deco/brazier-close.webp" alt="">
+        <i class="flame" data-fire="sparks" aria-hidden="true"></i>
+      </div>
+      <div class="omens" id="omens" role="listbox" aria-label="預兆"></div>
+    </section>
+    <section class="step" data-step="1" aria-label="擇牌陣並獻上">
+      <button type="button" class="seal" id="seal" aria-label="按住封印，喚醒神諭" disabled></button>
+    </section>
+    <p class="cap" id="stepCap" aria-live="polite"></p>
+    <nav class="steps" id="steps" aria-label="步驟"></nav>
+  </form>
+  <!-- 擇牌陣：命運女神的目光落於何處——四枚星象徽記 -->
+  <div class="sigils" id="sigils" role="radiogroup" aria-label="命運女神的目光落於"></div>
+  <div class="offering" id="offering" aria-hidden="true"></div>
+  <p class="whisper out" id="whisper" aria-live="polite"></p>
+  <p class="cuthint" id="cutHint" hidden>切牌：輕觸一疊，覆於其上</p>
+
+  <p class="hint" id="hint" role="status" aria-live="polite"></p>
+  <button type="button" class="flipall" id="flipAll" hidden>一併翻開</button>
+
+  <section class="scroll" id="reading" aria-label="神諭解讀" hidden>
+    <div class="scroll-in" id="readingIn"></div>
+  </section>
+</div>
+
+<!-- 分享：神諭圖卡＋各種分享方式 -->
+<div class="share" id="share" role="dialog" aria-modal="true" aria-labelledby="shareTitle" hidden>
+  <div class="share-in">
+    <h2 id="shareTitle">傳出這則神諭</h2>
+    <div class="share-card"><img id="shareImg" alt="神諭圖卡"><i class="share-wait" aria-hidden="true"></i></div>
+    <p class="share-tip">長按圖卡可存入相簿，再貼到限時動態</p>
+    <div class="share-acts">
+      <button type="button" class="b-main" data-act="native">傳給友人</button>
+      <button type="button" data-act="save">存下圖卡</button>
+      <button type="button" data-act="link">複製連結</button>
+      <button type="button" data-act="line">LINE</button>
+      <button type="button" data-act="facebook">Facebook</button>
+      <button type="button" data-act="threads">Threads</button>
+    </div>
+    <p class="share-status" id="shareStatus" role="status" aria-live="polite"></p>
+    <button type="button" class="share-close" data-close>收起</button>
+  </div>
+</div>
+
+<!-- 進入畫面：山巒上的德爾菲神殿。門口的帷幕就是入口——撥開它，走進內殿 -->
+<div class="intro" id="intro">
+  <div class="gate" id="gate">
+    <img class="gate-img" alt="" draggable="false">
+    <div class="door" role="button" aria-label="撥開帷幕，走入神殿">
+      <div class="door-glow"></div>
+      <div class="curtain l"></div><div class="curtain r"></div>
+    </div>
+  </div>
+  <div class="intro-flash" aria-hidden="true"></div>
+  <header class="intro-head">
+    <p class="intro-greek" aria-hidden="true">ΓΝΩΘΙ ΣΑΥΤΟΝ</p>
+    <h1 class="intro-title">神諭塔羅</h1>
+    <p class="intro-sub" aria-hidden="true">ORACLE TAROT · DELPHI</p>
+    <div class="intro-load" id="introLoad" role="progressbar" aria-label="點燃火盆" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="introBar"></i></div>
+  </header>
+  <div class="intro-foot">
+    <div class="intro-body" id="introBody">
+      <p class="intro-line">內殿的火未熄，巨蟒皮同仍在凝視。</p>
+    </div>
+    <p class="intro-hint" aria-hidden="true">撥開帷幕</p>
+    <button type="button" class="b-sub" id="enterAlt" hidden disabled></button>
+    <p class="intro-note">殿中有聲；輕觸右上角的里拉琴，便歸於靜默</p>
+  </div>
+  <button type="button" class="intro-skip" id="introSkip" hidden>直接入殿</button>
+</div>
+
+<div class="rotate" aria-hidden="true"><p>請將裝置轉為直向，再走入神殿</p></div>
+
+<noscript><p style="color:#fff;padding:2em">須啟用 JavaScript，神殿之門方能開啟。</p></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

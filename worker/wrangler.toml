@@ -1,0 +1,16 @@
+name = "delphi-oracle-ai"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# 允許呼叫的網站來源（逗號分隔）；localhost 一律放行，方便本機測試
+ALLOWED_ORIGINS = "https://dhoper.github.io"
+MODEL = "deepseek-flash"
+
+# 每個 IP 每 60 秒最多 6 次叩問
+[[ratelimits]]
+name = "RL"
+namespace_id = "2611"
+simple = { limit = 6, period = 60 }
+
+# 金鑰不寫在這裡：npx wrangler secret put DEEPSEEK_API_KEY

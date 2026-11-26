@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<!-- 分享預覽圖（og.jpg，1200×630）與 artifact 縮圖：用 Playwright 開這頁截圖，見 tools/make-og.py -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Noto+Serif+TC:wght@400&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:"Oracle Display";src:url(../assets/fonts/genryumin-b.woff2) format("woff2");font-weight:400 900;font-display:block}
+html,body{margin:0;background:#060508}
+.og{position:relative;width:1200px;height:630px;overflow:hidden;background:#060508}
+.og .bg{position:absolute;left:50%;top:-6%;width:1300px;transform:translateX(-50%)}
+.og::after{content:"";position:absolute;inset:0;background:radial-gradient(38% 46% at 50% 30%,rgba(6,5,8,0),rgba(6,5,8,.55) 75%),linear-gradient(180deg,rgba(6,5,8,.35),rgba(6,5,8,.1) 30%,rgba(6,5,8,.78) 58%,rgba(6,5,8,.95))}
+.txt{position:absolute;left:0;right:0;bottom:56px;z-index:2;text-align:center}
+.greek{font:600 17px/1 Cinzel,serif;letter-spacing:.6em;text-indent:.6em;color:rgba(217,172,85,.75)}
+h1{margin:14px 0 6px;font:700 104px/1.05 "Oracle Display",serif;letter-spacing:.2em;text-indent:.2em;background:linear-gradient(180deg,#fdebb8 8%,#e0ae55 52%,#94621f 96%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 12px rgba(0,0,0,.95))}
+.sub{font:600 18px/1 Cinzel,serif;letter-spacing:.5em;text-indent:.5em;color:#b8a582}
+.div{display:block;width:420px;margin:18px auto 14px}
+.line{font:400 26px/1.5 "Noto Serif TC",serif;letter-spacing:.14em;color:#e8dcc0;text-shadow:0 2px 10px #000}
+.c{position:absolute;width:170px;z-index:2;top:26px}.c.l{left:26px;transform:scaleX(-1)}.c.r{right:26px}
+</style>
+</head>
+<body>
+<div class="og" id="og">
+  <img class="bg" src="../assets/sanctum/temple-wide.webp" alt="">
+  <img class="c l" src="../assets/ui/corner-tr.webp" alt=""><img class="c r" src="../assets/ui/corner-tr.webp" alt="">
+  <div class="txt">
+    <div class="greek">ΓΝΩΘΙ ΣΑΥΤΟΝ</div>
+    <h1>神諭塔羅</h1>
+    <div class="sub">ORACLE TAROT · DELPHI</div>
+    <img class="div" src="../assets/ui/divider.webp" alt="">
+    <div class="line">在巨蟒皮同的凝視下，抽出你的牌</div>
+  </div>
+</div>
+</body>
+</html>

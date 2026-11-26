@@ -35,6 +35,8 @@ async function quota(req, env) {
   const ku = `d:${day}:u:${u}`, ks = `d:${day}:site`;
   const [nu, ns] = await Promise.all([env.QUOTA.get(ku), env.QUOTA.get(ks)]).then(v => v.map(x => +x || 0));
   const lu = +env.DAILY_PER_USER || 5, ls = +env.DAILY_SITE || 100;
+  // QUOTA_OFF="1"：暫時不限每日次數（仍照記次數，方便觀察用量；每分鐘防洗頻照舊）
+  if (env.QUOTA_OFF === "1") return { ku, ks, nu, ns, lu, ls, unlimited: true, user: 999, site: 999 };
   return { ku, ks, nu, ns, lu, ls, user: Math.max(0, lu - nu), site: Math.max(0, ls - ns) };
 }
 
@@ -48,7 +50,7 @@ export default {
     if (h["Access-Control-Allow-Origin"] !== req.headers.get("Origin")) return json({ error: "origin_not_allowed" }, 403, h);
     if (req.method === "GET" && url.pathname === "/quota") {
       const q = await quota(req, env);
-      return json({ user: q.user, site: q.site, perUser: q.lu, perSite: q.ls }, 200, h);
+      return json({ user: q.user, site: q.site, perUser: q.lu, perSite: q.ls, unlimited: !!q.unlimited }, 200, h);
     }
     if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405, h);
 
@@ -92,6 +94,6 @@ export default {
       console.log("deepseek error", upstream.status, detail.slice(0, 300));
       return json({ error: upstream.status === 429 ? "rate_limited" : "upstream" }, upstream.status === 429 ? 429 : 502, h);
     }
-    return new Response(upstream.body, { status: 200, headers: { ...h, "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "X-Quota-User": String(q.user - 1), "Access-Control-Expose-Headers": "X-Quota-User" } });
+    return new Response(upstream.body, { status: 200, headers: { ...h, "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "X-Quota-User": q.unlimited ? "-1" : String(q.user - 1), "Access-Control-Expose-Headers": "X-Quota-User" } });
   }
 };

@@ -600,7 +600,7 @@ function followSlots(ms) {
 // 叩問：寫下所問（可留白），按「叩問」或 Enter 進入下一步
 function showQuota() {
   fetchQuota().then(q => {
-    const el = $("qQuota"); if (!q) { el.textContent = ""; return; }
+    const el = $("qQuota"); if (!q || q.unlimited) { el.textContent = ""; el.classList.remove("out"); return; }
     const n = Math.min(q.user, q.site);
     el.textContent = n > 0 ? `今日女祭司尚可應汝 ${n} 次` : "今日神力已竭，此番依古法解讀";
     el.title = n > 0 ? "" : "免費網站為節省成本，每人每日可請女祭司解讀 5 次；明日子時復盈";

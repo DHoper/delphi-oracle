@@ -15,7 +15,7 @@ export const aiQuota = { user: null };
 // 叩問前先查今日剩餘次數，讓求問者在儀式前就知道女祭司會不會開口
 export async function fetchQuota() {
   if (!CONFIG.AI_ENDPOINT) return null;
-  try { const r = await fetch(CONFIG.AI_ENDPOINT + "quota"); if (!r.ok) return null; const q = await r.json(); aiQuota.user = Math.min(q.user, q.site); return q; } catch (_) { return null; }
+  try { const r = await fetch(CONFIG.AI_ENDPOINT + "quota"); if (!r.ok) return null; const q = await r.json(); aiQuota.user = q.unlimited ? null : Math.min(q.user, q.site); return q; } catch (_) { return null; }
 }
 export async function aiAvailable() { return !!CONFIG.AI_ENDPOINT || !!(await getSample()); }
 
@@ -36,7 +36,7 @@ async function viaEndpoint(R, onText) {
     let info = {}; try { info = await res.json(); } catch (_) {}
     throw Object.assign(new Error("http"), { code: info.error || (res.status === 429 ? "rate_limited" : "http"), info });
   }
-  const left = res.headers.get("X-Quota-User"); if (left != null) aiQuota.user = +left;
+  const left = res.headers.get("X-Quota-User"); if (left != null) aiQuota.user = +left < 0 ? null : +left;
   const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "", txt = "";
   for (;;) {
     const { done, value } = await rd.read(); if (done) break;

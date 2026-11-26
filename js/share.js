@@ -132,7 +132,7 @@ export async function renderShareCard(R, { shared = false } = {}) {
   // 底部：分隔線、邀請與網址
   if (divider) { const dw = 640, dh = dw * divider.height / divider.width; ctx.drawImage(divider, (W - dw) / 2, H - 300, dw, dh); }
   ctx.font = `600 34px ${DISP}`; ctx.fillStyle = "#e9cf91"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10;
-  spaced(ctx, shared ? "在巨蟒的凝視下，汝亦來抽一次" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H - 186, 6);
+  spaced(ctx, shared ? "在巨蟒的凝視下，汝亦來求一諭" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H - 186, 6);
   ctx.font = `600 26px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H - 132, 3);
   return cv;
 }

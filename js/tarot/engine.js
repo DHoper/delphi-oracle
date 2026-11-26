@@ -2,6 +2,7 @@
 // 流程：判斷問題類型 → 依類型取各牌在該位置的解讀 → 加權計分得出傾向 → 組合與趨勢 → 輸出「解讀依據」R
 // R 是結構化資料：網頁依它組出文字；AI 細說也把 R 原封不動交給模型當依據，確保兩者結論一致。
 // 未來姓名學、八字、紫微、星座等模組都輸出同樣形狀的 R（system、verdict、sections…），前端共用。
+import { CONFIG } from "../config.js";
 import { CARDS, SPREADS, WEIGHTS, TOPIC, ADVICE, SCORE_UP, SCORE_REV, COMBOS, SUBMETA, META, SUITS, SUIT_LENS } from "./data.js";
 
 const TOPIC_NAME = { love: "愛與情感", career: "事業與學業", money: "財貨與交易", gen: "命運的全貌" };
@@ -127,8 +128,9 @@ function synthesize(R, picked, seed) {
   const out = [], n = picked.length, M = picked.map(c => META[c.i]);
   const majors = M.filter(m => m.arcana === "major").length;
   const S = s => out.push(s);
-  // 大牌比例
-  if (n === 1) {
+  // 大牌比例（只用大牌的牌組時每張都是大牌，這段觀察沒有意義，略過）
+  if (CONFIG.MAJOR_ONLY) {}
+  else if (n === 1) {
     if (majors) S({ kind: "major", text: V(["降下的是一張大牌——今日不是尋常的一日，有更大的力量在推動汝。", "單張之中現出大牌：這不是瑣事，而是命運的一道指示。"], seed) });
     else S({ kind: "element", text: `這是一張${SUITS[M[0].suit].zh}，屬${EL_ZH[M[0].element]}——今日的課題，落在${EL_REALM[M[0].element]}之上。` });
   } else if (majors === n) S({ kind: "major", text: V(["三張皆是大牌——此事非同小可，背後是命運之手；汝能做的是順應與抉擇，而非全然掌控。", "大牌盡數降臨：這是人生的一道關口，不是日常的起落。"], seed) });

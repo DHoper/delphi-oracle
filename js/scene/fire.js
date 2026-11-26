@@ -6,12 +6,12 @@ export function createFire(canvas, stage, { reduced }) {
   const ctx = canvas.getContext("2d");
   let W = 0, H = 0, dpr = 1, sources = [], power = 1, powerT = 1, green = 0, greenT = 0;
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",");
-  const parts = [];
+  const parts = [], emb = [];
   function resize() {
     dpr = Math.min(devicePixelRatio || 1, 2); W = canvas.clientWidth; H = canvas.clientHeight;
     canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const sr = stage.getBoundingClientRect();
-    sources = [...stage.querySelectorAll("[data-fire]")].map(el => { const r = el.getBoundingClientRect(); return { x: r.left - sr.left + r.width / 2, y: r.top - sr.top + r.height * 0.06, w: r.width, sparks: el.dataset.fire === "sparks" }; }).filter(s => s.w > 0);
+    sources = [...stage.querySelectorAll("[data-fire]")].map(el => { const r = el.getBoundingClientRect(); return { x: r.left - sr.left + r.width / 2, y: r.top - sr.top + r.height * 0.06, w: r.width, sparks: el.dataset.fire === "sparks", altar: el.dataset.fire === "altar" }; }).filter(s => s.w > 0);
   }
   resize(); new ResizeObserver(resize).observe(canvas);
 
@@ -33,34 +33,39 @@ export function createFire(canvas, stage, { reduced }) {
       const g = ctx.createRadialGradient(s.x, s.y - fh * 0.3, 0, s.x, s.y - fh * 0.3, fh * 2.4 * flick);
       g.addColorStop(0, `rgba(${cHalo},${0.1 * power})`); g.addColorStop(1, `rgba(${cHalo},0)`);
       ctx.fillStyle = g; ctx.fillRect(s.x - fh * 2.4, s.y - fh * 2.7, fh * 4.8, fh * 4.8);
-      // 火舌：以線刻筆觸畫成——一束由盆口升起、彼此交纏的弧線，像銅版畫裡的火焰，而不是柔光球
-      if (!s.sparks) {
-        // 柔和的火心（墊在線條下，讓線束讀起來是火）
-        const core = ctx.createRadialGradient(s.x, s.y - fh * 0.25, 0, s.x, s.y - fh * 0.25, fw * 0.75);
-        core.addColorStop(0, `rgba(${cMid},.35)`); core.addColorStop(1, `rgba(${cOut},0)`);
-        ctx.fillStyle = core; ctx.fillRect(s.x - fw, s.y - fh, fw * 2, fh * 1.2);
-        const N = 19, lw = Math.max(0.9, fw / 30);
-        const grad = ctx.createLinearGradient(0, s.y, 0, s.y - fh * 1.15);
-        grad.addColorStop(0, `rgba(${cIn},.95)`); grad.addColorStop(0.5, `rgba(${cMid},.8)`); grad.addColorStop(1, `rgba(${cOut},0)`);
-        ctx.strokeStyle = grad; ctx.lineCap = "round";
-        // 三道火舌，各自搖曳；每條線向最近的火舌尖收攏
-        const tongues = [-0.28, 0, 0.3].map((c, j) => ({ x: s.x + c * fw + noise(ts * 1.9, j * 4 + i) * fw * 0.22, h: fh * [0.7, 1.05, 0.78][j] * (0.85 + 0.25 * Math.abs(noise(ts * 2.4, j * 2 + i))) }));
-        for (let k = 0; k < N; k++) {
-          const u = k / (N - 1) - 0.5, T = tongues[u < -0.17 ? 0 : u > 0.17 ? 2 : 1];
-          const bx = s.x + u * fw * 1.05, f = 0.55 + 0.45 * ((k * 37) % 10) / 10, tipx = T.x + (bx - T.x) * 0.12, tipy = s.y - T.h * f;
-          const cx = bx + (tipx - bx) * 0.2 + noise(ts * 2.8, k * 1.7 + i) * fw * 0.18, cy = s.y - T.h * f * 0.5;
-          ctx.lineWidth = lw * (1.15 - Math.abs(u));
-          ctx.beginPath(); ctx.moveTo(bx, s.y + fw * 0.1 - u * u * fw * 0.5); ctx.quadraticCurveTo(cx, cy, tipx, tipy); ctx.stroke();
-        }
-        // 脫離火舌、往上飄散的短筆
-        for (let k = 0; k < 5; k++) {
-          const ph = (ts * (0.9 + k * 0.13) + k / 5) % 1, x = s.x + noise(ts + k * 3, i + k) * fw * 0.4, y = s.y - fh * (0.75 + ph * 0.7);
-          ctx.lineWidth = lw * 0.8 * (1 - ph); ctx.strokeStyle = `rgba(${cMid},${(1 - ph) * 0.7})`;
-          ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + fw * 0.06, y - fh * 0.08, x - fw * 0.02, y - fh * 0.16); ctx.stroke();
+      // 祭壇之火：不畫成一整團火焰，而是拆成細件——貼著桌面的一層暖光、上升的細碎餘燼、幾縷細短捲曲的火舌、偶爾竄高的火星
+      if (s.altar) {
+        const base = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.w * 0.55);
+        base.addColorStop(0, `rgba(${cIn},${0.22 * power})`); base.addColorStop(0.4, `rgba(${cMid},${0.12 * power})`); base.addColorStop(1, `rgba(${cOut},0)`);
+        ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 0.22); ctx.translate(-s.x, -s.y); ctx.fillStyle = base; ctx.beginPath(); ctx.arc(s.x, s.y, s.w * 0.55, 0, 7); ctx.fill(); ctx.restore();
+        if (!reduced) {
+          const n = Math.min(14, Math.round(3.5 * power + Math.random() * 2));
+          for (let k = 0; k < n; k++) {
+            const g = (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; // 近似常態：中間密、兩側疏
+            emb.push({ x: s.x + g * s.w * 0.24, y: s.y - Math.random() * 3, vx: (Math.random() - 0.5) * 0.25, vy: -(0.45 + Math.random() * 1.1) * Math.sqrt(power), life: 1, d: 0.012 + Math.random() * 0.02, r: 0.7 + Math.random() * 1.6, ph: Math.random() * 7, wisp: Math.random() < 0.16, green });
+          }
+          if (Math.random() < 0.05 * power) emb.push({ x: s.x + (Math.random() - 0.5) * s.w * 0.2, y: s.y - 4, vx: (Math.random() - 0.5) * 0.8, vy: -(2.2 + Math.random() * 1.8) * Math.sqrt(power), life: 1, d: 0.01, r: 1.1, ph: 0, spark: true, green });
         }
       }
-      if (!reduced && Math.random() < 0.18 * power) spawn(s.x + (Math.random() - 0.5) * fw * 0.6, s.y - fh * 0.4, { up: 0.5 * power, hue: 30 + green * 100 });
+      if (!reduced && !s.altar && Math.random() < 0.18 * power) spawn(s.x + (Math.random() - 0.5) * fw * 0.6, s.y - fh * 0.4, { up: 0.5 * power, hue: 30 + green * 100 });
     });
+    // 餘燼：白→金→橙→暗紅，越往上越小越淡；火舌是細短的弧線，隨上升左右捲動
+    if (emb.length > 420) emb.splice(0, emb.length - 420);
+    for (let i = emb.length - 1; i >= 0; i--) {
+      const e = emb[i]; e.ph += 0.09; e.x += e.vx + Math.sin(e.ph + ts * 2) * 0.22; e.y += e.vy; e.vy *= 0.993; e.life -= e.d;
+      if (e.life <= 0) { emb.splice(i, 1); continue; }
+      const L = e.life, hot = e.green ? [140 + 80 * L, 255, 160 + 60 * L] : [255, 140 + 110 * L, 40 + 170 * L * L];
+      const col = `rgba(${hot[0] | 0},${hot[1] | 0},${hot[2] | 0},${Math.min(1, L * 1.3) * (e.spark ? 1 : 0.85)})`;
+      if (e.wisp) {
+        const len = 7 + 9 * L, bend = Math.sin(e.ph * 1.7) * 4;
+        ctx.strokeStyle = col; ctx.lineWidth = 0.6 + 0.9 * L; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(e.x, e.y + len * 0.5); ctx.quadraticCurveTo(e.x + bend, e.y, e.x - bend * 0.4, e.y - len * 0.5); ctx.stroke();
+      } else if (e.spark) {
+        ctx.strokeStyle = col; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x - e.vx * 2.5, e.y - e.vy * 2.5); ctx.stroke();
+      } else {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (0.45 + 0.55 * L), 0, 7); ctx.fill();
+      }
+    }
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       p.x += p.vx + Math.sin(ts * 2 + i) * 0.15; p.y += p.vy; p.vy = p.vy * 0.995 + p.g; p.life -= p.decay;

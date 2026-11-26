@@ -32,7 +32,7 @@ export function faceSVG(i, rev = false) {
 <text x="60" y="34" text-anchor="middle" font-family="Cinzel,serif" font-size="15" fill="#f3d48b">${ROMAN[i]}</text>
 <circle cx="60" cy="96" r="30" fill="none" stroke="#8a6a2e" stroke-width=".8"/>
 ${m.arcana === "minor" ? `<g fill="none" stroke="${rev ? "#9e2f2a" : "#d9ac55"}" stroke-width="1.4" stroke-linejoin="round"${rev ? ' transform="rotate(180 60 96)"' : ""}>${GLYPH[m.suit]}</g>` : `<circle cx="60" cy="96" r="22" fill="none" stroke="#d9ac55" stroke-width=".6" stroke-dasharray="2 3"/>
-<text x="60" y="101" text-anchor="middle" font-family="'Noto Serif TC',serif" font-size="9" fill="${rev ? "#9e2f2a" : "#8a6a2e"}">${rev ? "逆位牌面素材" : "正位牌面素材"}</text>`}
+<text x="60" y="${ROMAN[i].length > 3 ? 100 : 102}" text-anchor="middle" font-family="Cinzel,serif" font-size="${ROMAN[i].length > 3 ? 11 : 15}" fill="${rev ? "#c25a48" : "#d9ac55"}">${ROMAN[i]}</text>`}
 <text x="60" y="160" text-anchor="middle" font-family="'Oracle Display','Noto Serif TC',serif" font-size="${zh.length > 4 ? 12 : zh.length > 3 ? 13 : 16}" font-weight="600" fill="#f3d48b">${esc(zh)}</text>
 <text x="60" y="177" text-anchor="middle" font-family="Cinzel,serif" font-size="${en.length > 16 ? 5.6 : 7}" fill="#b8a582">${esc(en.toUpperCase())}</text>
 </svg>`;

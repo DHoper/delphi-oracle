@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="神諭塔羅">
 <meta property="og:title" content="神諭塔羅">
-<meta property="og:description" content="在巨蟒皮同的凝視下取一預兆、抽出汝之牌，領受一則神諭。">
+<meta property="og:description" content="向神諭叩問，自火中取一預兆，在巨蟒皮同的凝視下抽出汝之牌。">
 <meta property="og:url" content="https://dhoper.github.io/delphi-oracle/">
 <meta property="og:image" content="https://dhoper.github.io/delphi-oracle/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -84,25 +84,32 @@
 
   <!-- 求問：一次只做一件事。一、自火中取預兆　二、擇牌陣　三、刻下問題，按住封印獻上 -->
   <form class="rite" id="ask" autocomplete="off" data-step="0">
-    <section class="step" data-step="0" aria-label="取一預兆">
-      <div class="brazier" id="brazier">
-        <div class="fire-art" aria-hidden="true"><img class="f1" src="assets/deco/flame.webp" alt=""><img class="f2" src="assets/deco/flame.webp" alt=""></div>
-        <img class="bowl" src="assets/deco/brazier-close.webp" alt="">
-        <i class="flame" data-fire="sparks" aria-hidden="true"></i>
-      </div>
+    <!-- 祭壇之火：畫中石桌就是祭壇，火由粒子拼成，預兆投進這裡；整場儀式都燃著 -->
+    <div class="brazier altar" id="brazier"><i class="flame" data-fire="altar" aria-hidden="true"></i></div>
+    <!-- 求問三步：一、叩問（道出所問）　二、自火中取預兆　三、命運三女神垂目（擇牌陣），按住封印獻上 -->
+    <section class="step" data-step="0" aria-label="叩問"></section>
+    <section class="step" data-step="1" aria-label="自火中取一預兆">
       <div class="omens" id="omens" role="listbox" aria-label="預兆"></div>
     </section>
-    <section class="step" data-step="1" aria-label="擇牌陣並獻上">
-      <button type="button" class="seal" id="seal" aria-label="按住封印，喚醒神諭" disabled></button>
+    <section class="step" data-step="2" aria-label="命運三女神垂視，獻上所問">
+      <button type="button" class="seal" id="seal" aria-label="按住封印，獻上所問" disabled></button>
     </section>
     <p class="cap" id="stepCap" aria-live="polite"></p>
     <nav class="steps" id="steps" aria-label="步驟"></nav>
   </form>
   <!-- 擇牌陣：命運女神的目光落於何處——四枚星象徽記 -->
-  <div class="sigils" id="sigils" role="radiogroup" aria-label="命運女神的目光落於"></div>
+  <div class="beam" id="beam" aria-hidden="true"><i></i></div>
+  <div class="sigils" id="sigils" role="radiogroup" aria-label="命運三女神將垂視何處"></div>
+  <!-- 道出所問：刻在石上的一行字，可留白；最多 60 字 -->
+  <div class="askq" id="askq">
+    <label class="vh" for="question">汝之所問</label>
+    <textarea id="question" class="inscribe" maxlength="60" rows="2" placeholder="刻下汝之所問，或留白" autocomplete="off" enterkeyhint="done"></textarea>
+    <p class="askq-count" id="qCount" aria-hidden="true">0／60</p>
+    <button type="button" class="b-main" id="askGo">叩問</button>
+  </div>
   <div class="offering" id="offering" aria-hidden="true"></div>
   <p class="whisper out" id="whisper" aria-live="polite"></p>
-  <p class="cuthint" id="cutHint" hidden>切牌：輕觸一疊，覆於其上</p>
+  <p class="cuthint" id="cutHint" hidden>切牌：隨心輕觸一疊</p>
 
   <p class="hint" id="hint" role="status" aria-live="polite"></p>
   <button type="button" class="flipall" id="flipAll" hidden>一併翻開</button>
@@ -110,6 +117,21 @@
   <section class="scroll" id="reading" aria-label="神諭解讀" hidden>
     <div class="scroll-in" id="readingIn"></div>
   </section>
+</div>
+
+<!-- 看牌：點牌即可看大圖 -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="牌面大圖" hidden>
+  <figure><div class="lb-card" id="lbCard"></div><figcaption id="lbCap"></figcaption></figure>
+  <button type="button" class="share-close" data-close>收起</button>
+</div>
+
+<!-- 神力耗盡等提示 -->
+<div class="notice" id="notice" role="alertdialog" aria-modal="true" aria-labelledby="noticeTitle" hidden>
+  <div class="notice-in">
+    <h2 id="noticeTitle"></h2>
+    <p id="noticeBody"></p>
+    <button type="button" class="b-main" data-close>領受</button>
+  </div>
 </div>
 
 <!-- 分享：神諭圖卡＋各種分享方式 -->

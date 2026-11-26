@@ -86,6 +86,14 @@ export function createFire(canvas, stage, { reduced }) {
   return {
     frame, resize,
     set(o) { if (o.power != null) powerT = o.power; if (o.green != null) greenT = o.green; },
+    // 微塵流：從 (x0,y0) 緩緩飄向 (x1,y1)，沿途微微擺盪，抵達時熄滅（命運三女神的目光自蛇眼垂落）
+    stream(x0, y0, x1, y1, n = 10) {
+      if (reduced) return;
+      for (let i = 0; i < n; i++) {
+        const T = 70 + Math.random() * 50, sx = x0 + (Math.random() - 0.5) * 16, sy = y0 + (Math.random() - 0.5) * 8, tx = x1 + (Math.random() - 0.5) * 30, ty = y1 + (Math.random() - 0.5) * 12;
+        parts.push({ x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, life: 1, decay: 1 / T, size: 0.6 + Math.random() * 1.1, hue: 40 + Math.random() * 10, g: 0, glint: Math.random() < 0.25 });
+      }
+    },
     burst(x, y, n = 24, o = {}) { if (reduced) return; for (let i = 0; i < n; i++) spawn(x + (Math.random() - 0.5) * (o.w || 0), y, { spread: o.spread || 3, up: o.down ? -0.4 : o.up || 1.6, size: 2, hue: o.hue, down: o.down }); }
   };
 }

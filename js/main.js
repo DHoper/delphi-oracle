@@ -267,7 +267,12 @@ function placeBeam(restart = false) {
   const beam = $("beam"), i = S.spreadSet && sigilsEl.querySelector(`[data-sp="${S.spread}"] i`); if (!i) return;
   const r = i.getBoundingClientRect(), sr = stage.getBoundingClientRect();
   beam.style.left = r.left - sr.left + r.width / 2 + "px"; beam.style.setProperty("--bh", r.top - sr.top + r.height * 0.6 + "px"); beam.style.setProperty("--bw", r.width * 1.7 + "px");
-  if (restart) { beam.classList.remove("on"); void beam.offsetWidth; beam.classList.add("on"); }
+  if (restart) {
+    beam.classList.remove("on"); void beam.offsetWidth; beam.classList.add("on");
+    // 目光自巨蟒雙眼垂落：幾縷金色微塵流向選中的星徽
+    const ey = parseFloat(stage.style.getPropertyValue("--eye-y")) || sr.height * 0.23, tx = r.left - sr.left + r.width / 2, ty = r.top - sr.top + r.height * 0.45;
+    let k = 0; clearInterval(placeBeam.t); placeBeam.t = setInterval(() => { fire.stream(sr.width / 2, ey + 6, tx, ty, 7); if (++k >= 9) clearInterval(placeBeam.t); }, 110);
+  }
 }
 sigilsEl.addEventListener("click", e => { const b = e.target.closest("button"); if (b) chooseSpread(b.dataset.sp); });
 sigilsEl.addEventListener("keydown", e => {

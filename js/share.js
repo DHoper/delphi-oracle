@@ -40,6 +40,26 @@ function spaced(ctx, text, x, y, sp = 0, align = "center") {
   ctx.textAlign = a0; return total;
 }
 // 中文斷行：行首不放標點
+// 帶重點標記的換行：回傳每行的片段 [{ s, b }]（b＝重點，畫成亮金色）
+function wrapRich(ctx, text, maxW, sp = 0) {
+  const chars = []; let b = false;
+  for (const part of String(text).split("**")) { for (const ch of part) chars.push({ ch, b }); b = !b; }
+  const NO_HEAD = "，。、；：！？」』）》…—", lines = []; let line = [], w = 0;
+  for (const c of chars) {
+    const cw = ctx.measureText(c.ch).width + sp;
+    if (w + cw > maxW && line.length && !NO_HEAD.includes(c.ch)) { lines.push(line); line = []; w = 0; }
+    line.push(c); w += cw;
+  }
+  if (line.length) lines.push(line);
+  return lines.map(l => l.reduce((a, c) => { const last = a[a.length - 1]; if (last && last.b === c.b) last.s += c.ch; else a.push({ s: c.ch, b: c.b }); return a; }, []));
+}
+function drawRich(ctx, segs, x, y, sp = 0) {
+  for (const g of segs) {
+    ctx.fillStyle = g.b ? "#f6cf73" : "#ecdfc2";
+    for (const ch of g.s) { ctx.fillText(ch, x, y); x += ctx.measureText(ch).width + sp; }
+    if (g.b) { /* 重點底線 */ }
+  }
+}
 function wrap(ctx, text, maxW, sp = 0) {
   const NO_HEAD = "，。、；：！？」』）》…—", lines = []; let line = "";
   for (const ch of text) {
@@ -83,9 +103,29 @@ function byComma(ctx, text, maxW, sp) {
   return wrap(ctx, text, maxW, sp);
 }
 // 女祭司之言：第一段若是一句短讖語就獨立出來，其餘是正文
+// 女祭司之言的格式：第一行讖語；之後的段落可帶小標【往昔】（獨占一行或接在段首），重點句以 **兩個星號** 標記
+// parseOracle → { omen, items: [{ h: 小標或"", t: 含 ** 標記的段落 }] }
+const HEAD = /^[#\s]*[【\[]([^】\]]{1,8})[】\]]\s*[:：]?\s*/;
+export function parseOracle(text) {
+  const blocks = String(text || "").replace(/\r/g, "").replace(/__/g, "**").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  let omen = "";
+  if (blocks.length && !HEAD.test(blocks[0]) && !blocks[0].includes("\n") && blocks[0].replace(/\*\*/g, "").length <= 34) omen = blocks.shift().replace(/\*\*/g, "").replace(/^#+\s*/, "");
+  const items = [];
+  for (const b of blocks) {
+    let cur = null; // 一個區塊裡可能有好幾個小標（模型少空一行時）
+    for (const line of b.split("\n").map(l => l.trim()).filter(Boolean)) {
+      const m = line.match(HEAD);
+      if (m) { cur = { h: m[1].trim(), t: line.slice(m[0].length).trim() }; items.push(cur); }
+      else if (cur) cur.t += line.replace(/^#+\s*/, "");
+      else { cur = { h: "", t: line.replace(/^#+\s*/, "") }; items.push(cur); }
+    }
+  }
+  return { omen, items: items.filter(x => x.h || x.t) };
+}
+export const plainText = t => String(t || "").replace(/\*\*/g, "");
 export function splitOracle(text) {
-  const parts = String(text || "").replace(/\r/g, "").replace(/\*\*|__/g, "").split(/\n\s*\n/).map(x => x.replace(/\n+/g, "").trim()).filter(Boolean);
-  return parts.length && parts[0].length <= 34 ? { omen: parts[0], body: parts.slice(1) } : { omen: "", body: parts };
+  const { omen, items } = parseOracle(text);
+  return { omen, body: items.filter(x => x.t).map(x => plainText(x.t)) };
 }
 const cardsLine = R => R.cards.map(c => `${R.cards.length > 1 ? c.position + "・" : ""}${c.name}${c.rev ? "（逆）" : ""}`).join("　");
 export function shareText(R, ai) {
@@ -180,13 +220,12 @@ export async function renderLongCard(R, { shared = false, ai = "", question = ""
   const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
   const m = document.createElement("canvas").getContext("2d"); // 量字用
   const n = R.cards.length, cw = n === 1 ? 400 : 300, ch = cw * 1252 / 732, gap = 36, total = n * cw + (n - 1) * gap, x0 = (W - total) / 2;
-  const { omen, body } = splitOracle(ai), hero = omen || R.verdict.text;
-  const paras = body; // 女祭司之言（AI）；沒有時由下方的古法細解當主文
+  const { omen, items } = parseOracle(ai), hero = omen || R.verdict.text;
   const plain = h => String(h || "").replace(/<[^>]+>/g, "");
   const gu = [{ h: "", t: R.verdict.detail }, ...readingParagraphs(R).map(p => (p.kind === "h" ? { h: plain(p.html) } : { t: plain(p.html) }))];
   m.font = `600 32px ${DISP}`; const ql = question ? wrap(m, `所問「${question}」`, 900, 2).slice(0, 2) : [];
   m.font = `700 60px ${DISP}`; const hl = byComma(m, hero, 920, 6).slice(0, 3);
-  m.font = `400 34px ${BODY}`; const pl = paras.map(p => wrap(m, p, 880, 1));
+  m.font = `400 34px ${BODY}`; const pl = items.map(x => ({ h: x.h, lines: x.t ? wrapRich(m, x.t, 880, 1) : [] }));
   m.font = `400 31px ${BODY}`; const gl = gu.map(x => (x.t ? { h: x.h, lines: wrap(m, x.t, 880, 1) } : { h: x.h, lines: [] }));
   m.font = `400 29px ${BODY}`; const stories = R.cards.map(c => { const ep = EPIC[c.id], my = MYTH[c.id]; return ep ? { head: `${R.cards.length > 1 ? c.position + "・" : ""}${c.name}${c.rev ? "・逆" : ""}${my ? "　" + my[0] : ""}`, lines: wrap(m, ep[c.rev ? 1 : 0], 860, 1) } : null; }).filter(Boolean);
   // 兩段式：先在一張很高的暫存畫布上畫內容、記下實際高度，最後裁成剛好的長度再補頁尾（不靠估算，不會壓字）
@@ -222,7 +261,12 @@ export async function renderLongCard(R, { shared = false, ai = "", question = ""
   if (pl.length) {
     y = section("女祭司之言", y + 40) + 24;
     ctx.font = `400 34px ${BODY}`; ctx.fillStyle = "#ecdfc2"; ctx.shadowBlur = 6;
-    pl.forEach(lines => { lines.forEach((l, k) => { ctx.fillText(l, 100, y + k * LH); }); y += lines.length * LH + 34; });
+    pl.forEach(p => {
+      if (p.h) { ctx.font = `700 34px ${DISP}`; ctx.fillStyle = "#e2bf75"; spaced(ctx, `【${p.h}】`, 92, y + 6, 4, "left"); y += 64; }
+      ctx.font = `400 34px ${BODY}`;
+      p.lines.forEach((l, k) => drawRich(ctx, l, 100, y + k * LH, 1));
+      if (p.lines.length) y += p.lines.length * LH + 34;
+    });
     ctx.font = `600 26px ${DISP}`; ctx.fillStyle = "#a99270"; spaced(ctx, "——德爾菲女祭司皮媞亞", W - 100, y - 4, 4, "right");
     y += 40;
   }

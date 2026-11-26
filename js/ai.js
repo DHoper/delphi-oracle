@@ -12,6 +12,11 @@ function getSample() {
 }
 // 今日剩餘次數（由 Worker 回報；預覽環境沒有）
 export const aiQuota = { user: null };
+// 叩問前先查今日剩餘次數，讓求問者在儀式前就知道女祭司會不會開口
+export async function fetchQuota() {
+  if (!CONFIG.AI_ENDPOINT) return null;
+  try { const r = await fetch(CONFIG.AI_ENDPOINT + "quota"); if (!r.ok) return null; const q = await r.json(); aiQuota.user = Math.min(q.user, q.site); return q; } catch (_) { return null; }
+}
 export async function aiAvailable() { return !!CONFIG.AI_ENDPOINT || !!(await getSample()); }
 
 export function aiBasis(R) {

@@ -83,7 +83,7 @@ export default {
         messages: oracleMessages(basis),
         stream: true,
         thinking: { type: "disabled" }, // 不先「思考」：直接串流正文，求問者不必乾等
-        max_tokens: 1400,
+        max_tokens: 1600,
         temperature: 1.0
       })
     });

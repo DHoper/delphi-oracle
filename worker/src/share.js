@@ -48,7 +48,7 @@ export async function handleShare(req, env, url, cors, json) {
     const to = rec ? `${site}?s=${id}` : site;
     const title = rec ? `神諭塔羅｜${rec.omen || rec.verdict || "一則神諭"}` : "神諭塔羅";
     const body = rec ? (rec.text || "").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean) : [];
-    const excerpt = rec ? ((body.length > 1 && body[0] === rec.omen ? body[1] : body[0]) || rec.verdict || "").replace(/\s+/g, "").slice(0, 78) + "……" : "在巨蟒皮同的凝視下取一預兆、抽出汝之牌。";
+    const excerpt = rec ? ((body.length > 1 && body[0] === rec.omen ? body[1] : body[0]) || rec.verdict || "").replace(/\*\*|【[^】]{1,8}】/g, "").replace(/\s+/g, "").slice(0, 78) + "……" : "在巨蟒皮同的凝視下取一預兆、抽出汝之牌。";
     const desc = rec && rec.cards ? `${rec.cards}｜${excerpt}` : excerpt;
     const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}">

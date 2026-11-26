@@ -9,10 +9,10 @@ import { createFire } from "./scene/fire.js";
 import { createSerpent } from "./scene/serpent.js";
 import { createAudio } from "./scene/audio.js";
 import { createSeal } from "./scene/seal.js";
-import { aiAvailable, aiReading, aiQuota } from "./ai.js";
+import { aiAvailable, aiReading, aiQuota, fetchQuota } from "./ai.js";
 import { MYTH } from "./tarot/myth.js";
 import { EPIC } from "./tarot/epic.js";
-import { encodeReading, decodeReading, createShareSheet, splitOracle } from "./share.js";
+import { encodeReading, decodeReading, createShareSheet, splitOracle, parseOracle } from "./share.js";
 import { createGate, gateImages } from "./scene/gate.js";
 
 const $ = id => document.getElementById(id);
@@ -142,6 +142,7 @@ function showStep(n) {
   [...$("steps").children].forEach((b, i) => { if (i === n) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
   $("steps").children[2].disabled = S.topic === "auto"; layout();
   if (n !== 1) unfocusOmen(true);
+  if (n === 0) showQuota();
   if (n === 0 && !S.qIntro) { S.qIntro = true; setTimeout(() => whisper("將汝之所問刻於石上\n留白亦可，神自知曉"), D(500)); }
   $("omens").classList.remove("chosen");
   requestAnimationFrame(() => { fire.resize(); fire.set({ power: n === 1 ? 1.4 : 1 }); });
@@ -257,21 +258,9 @@ function chooseSpread(sp, focus = false) {
   $("seal").disabled = false; stage.classList.add("spread-set");
   $("stepCap").textContent = gazeCap();
   if (changed) {
-    whisper(SP_WHISPER[sp]); audio.rustle(); audio.bowl(147, 0.07); setTimeout(() => placeBeam(true), 30);
-    const b = sigilsEl.querySelector(`[data-sp="${sp}"] i`), r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    fire.burst(r.left - sr.left + r.width / 2, r.top - sr.top + r.height * 0.85, 18, { up: 1.2, spread: 1.6, w: r.width * 0.8 });
-  }
-}
-// 神光聚焦：選中的星徽上方垂下一道金色光柱
-function placeBeam(restart = false) {
-  const beam = $("beam"), i = S.spreadSet && sigilsEl.querySelector(`[data-sp="${S.spread}"] i`); if (!i) return;
-  const r = i.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-  beam.style.left = r.left - sr.left + r.width / 2 + "px"; beam.style.setProperty("--bh", r.top - sr.top + r.height * 0.6 + "px"); beam.style.setProperty("--bw", r.width * 1.7 + "px");
-  if (restart) {
-    beam.classList.remove("on"); void beam.offsetWidth; beam.classList.add("on");
-    // 目光自巨蟒雙眼垂落：幾縷金色微塵流向選中的星徽
-    const ey = parseFloat(stage.style.getPropertyValue("--eye-y")) || sr.height * 0.23, tx = r.left - sr.left + r.width / 2, ty = r.top - sr.top + r.height * 0.45;
-    let k = 0; clearInterval(placeBeam.t); placeBeam.t = setInterval(() => { fire.stream(sr.width / 2, ey + 6, tx, ty, 7); if (++k >= 9) clearInterval(placeBeam.t); }, 110);
+    whisper(SP_WHISPER[sp]); audio.rustle(); audio.bowl(147, 0.07);
+    // 選中：星徽浮起、亮起，外圍漾開一圈金環（CSS）；重選時重播
+    const i = sigilsEl.querySelector(`[data-sp="${sp}"] i`); i.classList.remove("pick"); void i.offsetWidth; i.classList.add("pick");
   }
 }
 sigilsEl.addEventListener("click", e => { const b = e.target.closest("button"); if (b) chooseSpread(b.dataset.sp); });
@@ -298,7 +287,7 @@ async function offer() {
 
 function renderSlots(ignite = false) {
   const pos = SPREADS[S.spread].positions; slotsEl.dataset.sp = S.spread;
-  slotsEl.innerHTML = pos.map((p, k) => `<div class="slot${ignite ? " ignite" : ""}" data-k="${k}" style="--d:${D(k * 220)}ms"><div class="hole"></div><div class="lab">${p}</div><div class="nm"></div></div>`).join("");
+  slotsEl.innerHTML = pos.map((p, k) => `<div class="slot${ignite ? " ignite" : ""}" data-k="${k}" style="--d:${D(k * 220)}ms"><div class="hole" style="--slot:url('${new URL(`assets/slots/${S.spread}-${k}.webp`, location.href).href}')"></div><div class="lab">${p}</div><div class="nm"></div></div>`).join("");
   if (ignite) setTimeout(() => { const sr = stage.getBoundingClientRect(); slotsEl.querySelectorAll(".hole").forEach((h, k) => setTimeout(() => { const r = h.getBoundingClientRect(); fire.burst(r.left - sr.left + r.width / 2, r.top - sr.top + r.height, 14, { up: 1.1, spread: 1.2, w: r.width }); }, D(k * 220))); }, 30);
   layout();
 }
@@ -446,19 +435,19 @@ async function endDraw() {
   S.busy = false;
 }
 
-// ---------------- 翻牌：暗煙揭開 → 正位金光／逆位餘燼燒轉 ----------------
+// ---------------- 翻牌：金光化開 → 正位流光／逆位餘燼燒轉 ----------------
 async function flip(c, fast = false) {
   if (c.flipped || S.phase !== "flip") return; c.flipped = true; c.el.classList.remove("tappable"); c.el.onclick = null;
   const k = c.slot, cw = c.el.offsetWidth, ch = c.el.offsetHeight, W = cw * c.s, Hh = ch * c.s;
   const tf = (lift, s) => `translate(${c.x - cw / 2}px,${c.y - ch / 2 - lift}px) scale(${s})`;
-  c.el.style.zIndex = 300; c.face.style.setProperty("--v", "0%"); c.face.style.setProperty("--r", "0%");
+  c.el.style.zIndex = 300; c.face.style.setProperty("--v", "-24%"); c.face.style.setProperty("--r", "0%");
   c.el.animate([{ transform: tf(0, c.s) }, { transform: tf(20, c.s * 1.12) }], { duration: D(500), easing: "ease-out", fill: "forwards" });
   const turn = c.inner.animate([{ transform: "rotateY(0deg)" }, { transform: "rotateY(180deg)" }], { duration: D(fast ? 600 : 850), easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" });
   setTimeout(() => { audio.flip(); smoke.burst([c.x / stage.clientWidth, c.y / stage.clientHeight], 0.35); }, D(400));
   await turn.finished; c.inner.style.transform = "rotateY(180deg)"; turn.cancel();
-  // 暗煙由下往上散去，露出正位牌圖
-  fire.burst(c.x, c.y + Hh * 0.45, 20, { up: 1.3, spread: 1.4, w: W * 1.1 });
-  await tween(fast ? 500 : 800, p => c.face.style.setProperty("--v", `${p * 110}%`));
+  // 牌翻過來時整面是金光；光自牌心向外化開，露出牌圖，邊緣最後褪去
+  fire.burst(c.x, c.y, 18, { up: 0.9, spread: 2.2, w: W * 0.9 });
+  await tween(fast ? 600 : 1000, p => c.face.style.setProperty("--v", `${(1 - Math.pow(1 - p, 2.2)) * 149 - 24}%`));
   if (!c.rev) {
     c.el.classList.add("sheen-run"); fire.burst(c.x, c.y - Hh * 0.45, 16, { up: 1.8, spread: 1.2, w: W });
   } else {
@@ -512,17 +501,20 @@ function startAI(R) {
 }
 const cleanAI = t => String(t || "").replace(/\r/g, "").replace(/\*\*|__/g, "").replace(/^#+\s*/gm, "");
 // 第一段若是一句短短的讖語，獨立成大字；其餘是正文段落
-function splitAI(t) {
-  const parts = cleanAI(t).split(/\n\s*\n/).map(x => x.replace(/\n+/g, "").trim()).filter(Boolean);
-  if (parts.length && parts[0].length <= 34) return { omen: parts[0], body: parts.slice(1) };
-  return { omen: "", body: parts };
-}
+// 段落 HTML：** 重點 ** → <mark>（串流中只出現一半的星號先不轉）
+const richHTML = t => esc(t).replace(/\*\*([^*]+?)\*\*/g, "<mark>$1</mark>").replace(/\*\*/g, "");
 function paintVoice(text, done) {
   const box = $("oracleText"); if (!box) return;
-  const { omen, body } = splitAI(text), om = $("omenLine");
+  const { omen, items } = parseOracle(text), om = $("omenLine");
   om.hidden = !omen; if (om.textContent !== omen) om.textContent = omen;
-  body.forEach((t, i) => { let p = box.children[i]; if (!p) { p = document.createElement("p"); p.className = "rise"; box.appendChild(p); } if (p.textContent !== t) p.textContent = t; });
-  while (box.children.length > body.length) box.lastElementChild.remove();
+  items.forEach((x, i) => {
+    let sec = box.children[i];
+    if (!sec) { sec = document.createElement("section"); sec.className = "rise"; sec.innerHTML = "<h4></h4><p></p>"; box.appendChild(sec); }
+    const h = sec.firstElementChild, p = sec.lastElementChild, html = richHTML(x.t);
+    h.hidden = !x.h; if (h.textContent !== x.h) h.textContent = x.h;
+    if (p.innerHTML !== html) p.innerHTML = html;
+  });
+  while (box.children.length > items.length) box.lastElementChild.remove();
   $("voice").classList.toggle("speaking", !done); $("voiceWait").hidden = !!text.trim();
   if (done && aiQuota.user != null) $("voiceNote").textContent = `今日神力尚可應汝 ${aiQuota.user} 次`;
 }
@@ -606,6 +598,15 @@ function followSlots(ms) {
   (function f(now) { S.cards.filter(c => c.picked).forEach(c => { const p = slotCenter(c.slot); put(c, p.x, p.y, 0, p.s); }); if (now - t0 < ms + 60) requestAnimationFrame(f); })(t0);
 }
 // 叩問：寫下所問（可留白），按「叩問」或 Enter 進入下一步
+function showQuota() {
+  fetchQuota().then(q => {
+    const el = $("qQuota"); if (!q) { el.textContent = ""; return; }
+    const n = Math.min(q.user, q.site);
+    el.textContent = n > 0 ? `今日女祭司尚可應汝 ${n} 次` : "今日神力已竭，此番依古法解讀";
+    el.title = n > 0 ? "" : "免費網站為節省成本，每人每日可請女祭司解讀 5 次；明日子時復盈";
+    el.classList.toggle("out", n <= 0);
+  });
+}
 const askGo = () => { if (S.phase === "ask" && step === 0) { $("question").blur(); audio.drum(); showStep(1); } };
 $("askGo").addEventListener("click", askGo);
 // 所問的字數
@@ -683,7 +684,7 @@ function loop(t) {
   requestAnimationFrame(loop);
 }
 new ResizeObserver(() => {
-  layout(); applyAtmosphere(); fire.resize(); if (S.phase === "ask" && step === 1) layoutOmens(); if (S.phase === "ask" && step === 2) placeBeam();
+  layout(); applyAtmosphere(); fire.resize(); if (S.phase === "ask" && step === 1) layoutOmens();
   if (S.phase === "draw") ribbonLayout().forEach(({ c, x, y, rot, s }) => { if (!c.picked) { put(c, x, y - (c === lifted ? 24 : 0), rot, s); c.fx = x; c.fy = y; c.frot = rot; c.fs = s; } });
   if (["flip", "oracle", "read", "knock"].includes(S.phase)) followSlots(0);
 }).observe(stage);

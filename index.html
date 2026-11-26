@@ -98,13 +98,12 @@
     <nav class="steps" id="steps" aria-label="步驟"></nav>
   </form>
   <!-- 擇牌陣：命運女神的目光落於何處——四枚星象徽記 -->
-  <div class="beam" id="beam" aria-hidden="true"><i></i></div>
   <div class="sigils" id="sigils" role="radiogroup" aria-label="命運三女神將垂視何處"></div>
   <!-- 道出所問：刻在石上的一行字，可留白；最多 60 字 -->
   <div class="askq" id="askq">
     <label class="vh" for="question">汝之所問</label>
     <textarea id="question" class="inscribe" maxlength="60" rows="2" placeholder="刻下汝之所問，或留白" autocomplete="off" enterkeyhint="done"></textarea>
-    <p class="askq-count" id="qCount" aria-hidden="true">0／60</p>
+    <p class="askq-meta"><span class="askq-count" id="qCount" aria-hidden="true">0／60</span><span class="askq-quota" id="qQuota"></span></p>
     <button type="button" class="b-main" id="askGo">叩問</button>
   </div>
   <div class="offering" id="offering" aria-hidden="true"></div>

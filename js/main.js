@@ -578,7 +578,15 @@ ${S.shared ? "" : `<div class="acts lead"><button type="button" class="primary" 
   $("readingIn").querySelectorAll(".cs").forEach(b => (b.onclick = () => openCard(+b.dataset.k)));
   S.cards.filter(c => c.picked).forEach(c => { c.el.onclick = () => openCard(c.slot); });
   $("again").onclick = again;
-  $("readingIn").querySelectorAll("[data-share]").forEach(b => (b.onclick = () => shareSheet.open(R, encodeReading({ spread: S.spread, topic: S.topic, seed: S.seed, picked: S.picked }), { shared: S.shared, ai: S.aiText || (aiRun && aiRun.done && !aiRun.error ? aiRun.text : ""), question: S.question || "" })));
+  $("readingIn").querySelectorAll("[data-share]").forEach(b => (b.onclick = async () => {
+    const run = aiRun && aiRun.R === R ? aiRun : null;
+    if (!S.aiText && run && !run.done) {
+      const t0 = b.textContent; b.textContent = "待女祭司說完……"; b.disabled = true;
+      await new Promise(res => { const f = () => run.done && res(); run.subs.add(f); setTimeout(res, 20000); f(); });
+      b.textContent = t0; b.disabled = false;
+    }
+    shareSheet.open(R, encodeReading({ spread: S.spread, topic: S.topic, seed: S.seed, picked: S.picked }), { shared: S.shared, ai: S.aiText || (run && run.done && !run.error ? run.text : ""), question: S.question || "" });
+  }));
   if ($("copy")) $("copy").onclick = async e => {
     const ai = S.aiText ? `【女祭司之言】\n${cleanAI(S.aiText).trim()}\n\n【古法細解】\n` : "";
     try { await navigator.clipboard.writeText(ai + readingPlainText(R)); e.target.textContent = "已抄錄"; } catch (_) { e.target.textContent = "無法抄錄"; }

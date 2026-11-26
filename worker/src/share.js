@@ -48,7 +48,7 @@ export async function handleShare(req, env, url, cors, json) {
     const to = rec ? `${site}?s=${id}` : site;
     const title = rec ? `神諭塔羅｜${rec.omen || rec.verdict || "一則神諭"}` : "神諭塔羅";
     const body = rec ? (rec.text || "").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean) : [];
-    const excerpt = rec ? ((body.length > 1 && body[0] === rec.omen ? body[1] : body[0]) || rec.verdict || "").replace(/\*\*|【[^】]{1,8}】/g, "").replace(/\s+/g, "").slice(0, 78) + "……" : "在巨蟒皮同的凝視下取一預兆、抽出汝之牌。";
+    const excerpt = rec ? ((body.length > 1 && body[0] === rec.omen ? body[1] : body[0]) || rec.verdict || "").replace(/\*\*|【[^】]{1,8}】/g, "").replace(/\s+/g, "").slice(0, 78) + "……" : "在巨蟒皮同的凝視下取一枚預兆，抽出你的牌。";
     const desc = rec && rec.cards ? `${rec.cards}｜${excerpt}` : excerpt;
     const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}">
@@ -59,7 +59,7 @@ export async function handleShare(req, env, url, cors, json) {
 <meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0;url=${esc(to)}">
 <style>body{background:#060508;color:#f3d48b;font:16px/1.8 serif;text-align:center;padding:3em 1em}</style>
-</head><body><p>神殿之門正在開啟……</p><p><a style="color:#f3d48b" href="${esc(to)}">若未自動前往，請點此</a></p>
+</head><body><p>神殿之門正在開啟……</p><p><a style="color:#f3d48b" href="${esc(to)}">沒有自動前往的話，請點這裡</a></p>
 <script>location.replace(${JSON.stringify(to)})</script></body></html>`;
     return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=600" } });
   }

@@ -76,3 +76,10 @@
 - 素材原圖：`C:\Users\dhope\delphi-oracle-art\raw\`（入口、星徽）；卡牌素材包解壓在 `delphi-oracle-art\cards-zip\`。
 - Recraft 自訂風格「希臘神話塔羅 黑金銅版畫」：`abe88b0f-7fd9-41c2-9900-0bfc8eea9923`。場景類素材用 `nano_banana_pro` 以內殿全景為畫風參考生成，才會與內殿一致。
 - 測試：Playwright 全流程截圖（360×640、390×844、768×1024、1366×768、1920×1080）。
+
+
+## 11-27 補充
+- **每次推上 Pages 前執行 `python tools/stamp.py`**：替 CSS 與所有 JS 模組加內容版本號（import map），手機與 LINE 內建瀏覽器才不會沿用快取舊檔。
+- AI 人設：`AI人設.md`（完整文件）→ `js/oracle-prompt.js`（實際提示詞）；改提示詞後重新部署 Worker。
+- 每日次數限制暫時關閉：`worker/wrangler.toml` 的 `QUOTA_OFF = "1"`，恢復改 "0" 再部署。
+- 全站稱呼求問者為「你」（不再用「汝」）；叩問為必填。

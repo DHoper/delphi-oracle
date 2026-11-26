@@ -56,8 +56,9 @@ function layout() {
   // 祭壇：畫中石桌的桌面中央；火是粒子拼成的，這裡只定出火的位置與投入範圍
   const bz = $("brazier");
   if (bz) {
-    const bw = Math.min(sw * (wide ? 0.1 : 0.26), W * 0.42), bh = bw * 0.22, base = bz.offsetParent ? bz.offsetParent.getBoundingClientRect() : st;
-    Object.assign(bz.style, { width: bw + "px", height: bh + "px", left: sx + sw * 0.5 - (base.left - st.left) + "px", top: Y(SC.table + 0.6) - bh * 0.5 - (base.top - st.top) + "px" });
+    // 畫中石桌：直式寬約畫面 48%、橫式約 15%；桌面中央在 table 線下 1.7～2.3%
+    const bw = Math.min(sw * (wide ? 0.12 : 0.36), W * 0.62), bh = bw * 0.22, base = bz.offsetParent ? bz.offsetParent.getBoundingClientRect() : st;
+    Object.assign(bz.style, { width: bw + "px", height: bh + "px", left: sx + sw * 0.5 - (base.left - st.left) + "px", top: Y(SC.table + (wide ? 2.3 : 1.7)) - bh * 0.5 - (base.top - st.top) + "px" });
   }
   // 牌位：下顎與石桌之間；牌寬受畫面寬與這段高度限制
   const labH = 30, nmH = 44, regTop = chinY + H * 0.02, regBot = tableY + H * 0.03;
@@ -67,11 +68,13 @@ function layout() {
   const tbH = H * 0.3, tbTop = slotsTop - tbH * 0.3; css("--tb-top", tbTop + "px");
   const spreadNow = S.spread === "choice" || S.spread === "mind" ? (cardH + labH) * 0.24 : 0, spread = S.phase === "ask" ? (cardH + labH) * 0.24 : spreadNow;
   const labBottom = slotsTop + cardH + labH + spread, slotsBottom = labBottom + nmH;
-  // 擇牌陣的四枚星徽：排在牌位將出現的地方（下顎與石桌之間）
-  const sigS = Math.max(56, Math.min(W * (wide ? 0.075 : 0.19), (regBot - regTop) * 0.42, 128));
-  // 緊貼巨蟒下顎之下，避開畫中火盆的火焰
-  const sigCY = chinY + H * (wide ? 0.05 : 0.035) + sigS / 2, sigBottom = sigCY + sigS / 2 + 34;
-  css("--sig-size", sigS + "px"); css("--sig-top", sigCY + "px");
+  // 擇牌陣：四枚星徽排成轉盤，正中那枚就是封印（按住獻上）；轉盤中心在巨蟒下顎與祭壇之間
+  const altarY = Y(SC.table + (wide ? 2.3 : 1.7)), band = altarY - chinY;
+  const carS = Math.max(84, Math.min(W * (wide ? 0.105 : 0.34), band * (wide ? 0.46 : 0.36), 168)), carCY = chinY + band * (wide ? 0.42 : 0.33);
+  css("--car-y", carCY + "px"); css("--car-s", carS + "px"); css("--car-rx", Math.min(carS * 0.98, W * 0.34) + "px");
+  // 說明：直式緊貼在星徽下方；橫式（桌機）放到祭壇下方的空地，免得壓到桌上的火
+  css("--si-top", (wide ? altarY + H * 0.045 : carCY + carS / 2 + 16) + "px");
+  const sigS = carS, sigBottom = carCY + carS / 2 + 34;
   // 道出所問：輸入框排在星徽原本的位置
   const qTop = chinY + H * 0.035, qH = Math.max(76, Math.min(104, H * 0.12));
   css("--q-y", qTop + "px"); css("--q-h", qH + "px");
@@ -79,13 +82,13 @@ function layout() {
   css("--wh-top", (S.phase === "ask" ? labBottom : slotsBottom) + 6 + "px");
   // 封印：低語之下、說明文字之上；空間不夠就縮小
   const cap = $("stepCap"), capTop = cap && cap.offsetHeight ? cap.getBoundingClientRect().top - st.top : H - 100;
-  const seal = $("seal"), sealTopEdge = Math.max(labBottom + 44, sigBottom + 58), sealH = Math.max(52, Math.min(wide ? 100 : 116, W * 0.26, capTop - 10 - sealTopEdge));
+  const seal = $("seal"), sealH = carS;
   css("--seal-size", sealH + "px");
   const sealBase = seal && seal.offsetParent ? seal.offsetParent.getBoundingClientRect().top - st.top : 0;
-  css("--seal-top", sealTopEdge + sealH / 2 - sealBase + "px");
+  css("--seal-top", carCY - sealBase + "px");
   // 低語：取預兆時貼在步驟說明之上（留出間距）；擇牌陣時在星徽之下；道出所問時在輸入框之下
   css("--wh-bottom", H - capTop + 20 + "px");
-  css("--wh-y", (step === 0 ? qTop + qH + 86 : sigBottom + 12) + "px");
+  css("--wh-y", (step === 0 ? qTop + qH + 112 : sigBottom + 12) + "px");
   // 解讀時（手機、平板）：牌縮小移到雙眼下方與紙卷之間
   if (!wide || W < 900) {
     const cs = getComputedStyle($("reading")).top, scrollTop = cs.endsWith("%") ? H * parseFloat(cs) / 100 : parseFloat(cs) || H * 0.46;
@@ -114,18 +117,22 @@ const LAYS = {
   mind: { name: "身・心・靈", cards: [[50, 30, 0, "靈"], [28, 72, 0, "身"], [72, 72, 0, "心"]] }
 };
 // 求問三步：0 叩問（道出所問）　1 自火中取預兆　2 命運三女神垂目（擇牌陣）＋封印
-const CAPS = ["汝所問何事", "自火中取一預兆", "命運三女神將垂視何處"]; // 擇牌陣選定之後改由 gazeCap() 說出落點
-const gazeCap = () => `命運三女神垂視汝之${SPREADS[S.spread].gaze}`;
+const CAPS = ["你想問什麼", "自火中取一預兆", "命運三女神將看向何處"]; // 擇牌陣選定之後改由 gazeCap() 說出落點
+const gazeCap = () => `命運三女神看向你的${SPREADS[S.spread].gaze}`;
 const askEl = $("ask");
 let step = 0;
 // 六枚木徽章：從火中升起，排成一道弧浮在火盆上方（位置依火盆實際大小計算）
-$("omens").innerHTML = OMENS.map((o, i) => `<button type="button" role="option" data-t="${o[0]}" aria-selected="false" aria-label="${o[1]}" style="--dl:${D(250 + i * 120)}ms"><i style="background-image:url(assets/omens/${o[0]}.webp)"></i></button>`).join("");
+$("omens").innerHTML = OMENS.map((o, i) => `<button type="button" role="option" data-t="${o[0]}" aria-selected="false" aria-label="${o[1]}" style="--dl:${D(250 + i * 120)}ms"><i style="background-image:url(assets/omens/${o[0]}.webp)"></i><b>${o[1]}</b></button>`).join("");
 function layoutOmens() {
   const rr = askEl.getBoundingClientRect(), br = $("brazier").getBoundingClientRect(), bs = [...$("omens").children];
   if (!br.width) return;
-  const cx = br.left + br.width / 2 - rr.left, my = br.top + br.height * 0.16 - rr.top, R = Math.min(Math.max(br.width * 1.15, 120), innerWidth * 0.4, 300);
+  const om = bs[0] ? bs[0].offsetWidth : 64, cx = br.left + br.width / 2 - rr.left, my = br.top + br.height * 0.5 - rr.top;
+  const two = rr.width < 640, A = Math.min(rr.width * 0.43, Math.max(om * 3.3, rr.width * 0.2), 360), lift = Math.max(om * 1.9, rr.height * 0.17), bow = Math.min(om * 0.55, 34);
+  const gx = Math.min(rr.width * 0.29, om * 2.05), rowY = [my - om * 1.7 - om * 1.75, my - om * 1.7];
   bs.forEach((b, i) => {
-    const a = Math.PI * (0.94 - 0.88 * i / 5), x = cx + Math.cos(a) * R, y = my - Math.sin(a) * R * 0.62 - br.height * 0.08;
+    let x, y;
+    if (two) { const col = i % 3 - 1, row = Math.floor(i / 3); x = cx + col * gx; y = rowY[row] - (col === 0 ? om * 0.18 : 0); }
+    else { const u = i / (bs.length - 1) * 2 - 1; x = cx + u * A; y = my - lift - (1 - u * u) * bow; }
     b.dataset.bx = x + "px"; b.dataset.by = y + "px"; b.style.setProperty("--fx", cx + "px"); b.style.setProperty("--fy", my + "px");
     if (b === focusedOmen) { const p = focusPos(); b.style.setProperty("--x", p.x + "px"); b.style.setProperty("--y", p.y + "px"); }
     else { b.style.setProperty("--x", x + "px"); b.style.setProperty("--y", y + "px"); }
@@ -143,17 +150,17 @@ function showStep(n) {
   $("steps").children[2].disabled = S.topic === "auto"; layout();
   if (n !== 1) unfocusOmen(true);
   if (n === 0) showQuota();
-  if (n === 0 && !S.qIntro) { S.qIntro = true; setTimeout(() => whisper("將汝之所問刻於石上\n留白亦可，神自知曉"), D(500)); }
+  if (n === 0 && !S.qIntro) { S.qIntro = true; setTimeout(() => whisper("把你想問的事寫在石上\n寫得越具體，神諭越清楚"), D(500)); }
   $("omens").classList.remove("chosen");
   requestAnimationFrame(() => { fire.resize(); fire.set({ power: n === 1 ? 1.4 : 1 }); });
-  if (n === 2) { showSigils(); if (!S.spreadIntro) { S.spreadIntro = true; setTimeout(() => whisper("命運三女神正自高處垂視\n觸一枚星徽，迎其目光"), D(900)); } }
+  if (n === 2) { $("whisper").classList.add("out"); showSigils(); }
   if (n === 1) { audio.hiss(); requestAnimationFrame(layoutOmens); [...$("omens").children].forEach(b => { b.style.transform = ""; b.style.visibility = ""; b.style.opacity = ""; b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; b.classList.remove("held", "touched"); }); }
 }
-$("steps").addEventListener("click", e => { const b = e.target.closest("button"); if (b && !b.disabled) showStep(+b.dataset.go); });
+$("steps").addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.disabled) return; if (+b.dataset.go > 0 && [...$("question").value.replace(/\s+/g, "")].length < 2) { showStep(0); askGo(); return; } showStep(+b.dataset.go); });
 // 預兆：點一下，深處傳來低語說出它的意思；拖進火盆才算取用
 const WHISPER = {
   love: "鴿子振翅……此兆主情愛", career: "梟在暗處睜眼……此兆主前程", money: "天平輕擺……此兆主財貨",
-  health: "蛇攀於杖……此兆主身與心", growth: "月桂成環……此兆主汝自身", gen: "紡錘輕轉……此兆主命運的全貌"
+  health: "蛇纏著手杖……此兆主身與心", growth: "月桂成環……此兆主你自己", gen: "紡錘輕轉……此兆主命運的全貌"
 };
 let whisperT = null, whisperedOnce = false;
 function whisper(text) {
@@ -163,7 +170,7 @@ function whisper(text) {
   whisperT = setTimeout(() => w.classList.add("out"), D(text.length * 55 + 2200));
 }
 // 取預兆：點一下，深處低語說出它的意思；把它拖進火盆的盆口放開，木徽章落入火中燃起，就是取了這個預兆
-function mouthRect() { const r = $("brazier").getBoundingClientRect(); return { l: r.left - r.width * 0.15, r: r.right + r.width * 0.15, t: r.top - r.width * 0.75, b: r.bottom + r.height, cx: r.left + r.width / 2, cy: r.top + r.height * 0.4 }; }
+function mouthRect() { const r = $("brazier").getBoundingClientRect(); return { l: r.left - r.width * 0.1, r: r.right + r.width * 0.1, t: r.top - Math.max(90, r.width * 0.45), b: r.bottom + Math.max(30, r.height), cx: r.left + r.width / 2, cy: r.top + r.height * 0.4 }; }
 const overMouth = (x, y) => { const m = mouthRect(); return x > m.l && x < m.r && y > m.t && y < m.b; };
 let om = null;
 $("omens").addEventListener("pointerdown", e => {
@@ -189,12 +196,12 @@ async function dropOmen(b) {
   b.style.visibility = "hidden";
   fire.set({ power: 5 }); fire.burst(m.cx - sr.left, m.cy - sr.top, 70, { up: 3.2, spread: 3.6, w: (m.r - m.l) * 0.5 }); audio.strike();
   S.topic = b.dataset.t; showTopic();
-  whisper("火已收下此兆\n" + WHISPER[S.topic].split("……")[1].replace("此兆主", "汝之所問，關乎"));
+  whisper("火已收下此兆\n" + WHISPER[S.topic].split("……")[1].replace("此兆主", "你問的事，關乎"));
   await wait(1500); fire.set({ power: 1 }); S.busy = false; showStep(2);
 }
 function endOm(e) {
   if (!om) return; const { b, drag } = om; om = null;
-  if (!drag) { if (focusedOmen !== b) focusOmen(b); else whisper(WHISPER[b.dataset.t] + "\n投入火中，便取此兆"); return; }
+  if (!drag) { if (focusedOmen !== b) focusOmen(b); else whisper(WHISPER[b.dataset.t] + "\n拖進火中，就取了這枚預兆"); return; }
   if (e && e.type === "pointerup" && overMouth(e.clientX, e.clientY)) return dropOmen(b);
   b.classList.remove("held"); askEl.classList.remove("hot"); fire.set({ power: 1.4 });
   b.animate([{ transform: b.style.transform }, { transform: "translate(calc(var(--x) - 50%),calc(var(--y) - 50%))" }], { duration: D(380), easing: "cubic-bezier(.3,.7,.2,1)" }); b.style.transform = "";
@@ -202,13 +209,13 @@ function endOm(e) {
 // 聚焦：點一下徽章，它移到火盆正上方、其他徽章淡去，等求問者把它投入火中；點外側便回到六枚並列
 let focusedOmen = null, posT = null;
 const posAnim = () => { const o = $("omens"); o.classList.add("pos-anim"); clearTimeout(posT); posT = setTimeout(() => o.classList.remove("pos-anim"), 750); };
-function focusPos() { const br = $("brazier").getBoundingClientRect(), rr = askEl.getBoundingClientRect(); return { x: br.left + br.width / 2 - rr.left, y: br.top - rr.top - Math.max(84, br.width * 0.42) }; }
+function focusPos() { const br = $("brazier").getBoundingClientRect(), rr = askEl.getBoundingClientRect(), om = $("omens").firstElementChild.offsetWidth; return { x: br.left + br.width / 2 - rr.left, y: br.top + br.height * 0.5 - rr.top - om * 1.55 }; }
 function focusOmen(b) {
   if (focusedOmen && focusedOmen !== b) unfocusOmen(true);
   focusedOmen = b; const p = focusPos();
   b.style.setProperty("--x", p.x + "px"); b.style.setProperty("--y", p.y + "px");
   posAnim(); b.classList.add("focused"); $("omens").classList.add("focusing"); audio.rustle();
-  whisper(WHISPER[b.dataset.t] + "\n投入火中，便取此兆");
+  whisper(WHISPER[b.dataset.t] + "\n拖進火中，就取了這枚預兆");
 }
 function unfocusOmen(quiet = false) {
   if (!focusedOmen) return; const b = focusedOmen; focusedOmen = null;
@@ -245,25 +252,59 @@ function moveGaze(from) {
 // 星徽：此刻（天頂之日）、因果（三相之月）、抉擇（星下岔路）、本心（迷宮之火）。觸一枚即選定，封印隨之亮起
 const SIGILS = [["one", "此刻"], ["time", "因果"], ["choice", "抉擇"], ["mind", "本心"]];
 const sigilsEl = $("sigils");
-sigilsEl.innerHTML = SIGILS.map(([id, nm], i) => `<button type="button" role="radio" aria-checked="false" data-sp="${id}" style="--dl:${D(120 + i * 110)}ms"><i style="background-image:url(assets/spreads/${id}.webp)"></i><b>${nm}</b></button>`).join("");
+sigilsEl.innerHTML = SIGILS.map(([id, nm], i) => `<button type="button" role="radio" aria-checked="false" data-sp="${id}" aria-label="${nm}"><i style="background-image:url(assets/spreads/${id}.webp)"></i><b>${nm}</b></button>`).join("");
+// 轉盤下方的說明：牌陣名、一句白話說明、牌位、操作提示
+const SP_DESC = { one: "抽一張牌，看清眼前這件事", time: "三張牌，看這件事的來龍去脈", choice: "兩條路各抽一張，再加一張神示", mind: "從身體、心情、內在各看一張" };
+const spreadInfo = document.createElement("div"); spreadInfo.className = "spread-info"; spreadInfo.id = "spreadInfo"; spreadInfo.setAttribute("aria-live", "polite");
+spreadInfo.innerHTML = `<b class="si-name"></b><span class="si-desc"></span><span class="si-pos"></span><span class="si-hint">左右滑動換牌陣　按住正中的星徽，獻上所問</span>`;
+sigilsEl.after(spreadInfo);
+function paintSpreadInfo(sp) {
+  spreadInfo.querySelector(".si-name").textContent = SIGILS.find(x => x[0] === sp)[1];
+  spreadInfo.querySelector(".si-desc").textContent = SP_DESC[sp];
+  spreadInfo.querySelector(".si-pos").textContent = SPREADS[sp].positions.length > 1 ? SPREADS[sp].positions.join("　·　") : "";
+  spreadInfo.classList.remove("swap"); void spreadInfo.offsetWidth; spreadInfo.classList.add("swap");
+}
+// 每枚星徽依它與正中的距離（0 正中、±1 兩側、2 後方）擺位；正中那枚在停穩後由封印接手
+function placeCarousel(animate = true) {
+  const cur = SIGILS.findIndex(x => x[0] === S.spread);
+  [...sigilsEl.children].forEach((b, i) => {
+    let d = (i - cur + 4) % 4; if (d === 3) d = -1;
+    b.dataset.d = d; b.classList.toggle("no-anim", !animate);
+    b.setAttribute("aria-checked", d === 0); b.tabIndex = d === 0 ? 0 : -1;
+  });
+}
 function showSigils() {
-  [...sigilsEl.children].forEach(b => { b.setAttribute("aria-checked", S.spreadSet && b.dataset.sp === S.spread); b.tabIndex = (S.spreadSet ? b.dataset.sp === S.spread : b.dataset.sp === "one") ? 0 : -1; b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; });
-  $("seal").disabled = !S.spreadSet; stage.classList.toggle("spread-set", S.spreadSet);
+  // 第一次進來預設「因果」（三張牌）；之後保留上次的選擇
+  if (!S.spreadSet) { S.spread = "time"; S.spreadSet = true; renderSlots(); }
+  placeCarousel(false); setSealCoin(S.spread); paintSpreadInfo(S.spread);
+  $("seal").disabled = false; $("seal").classList.remove("arriving"); stage.classList.add("spread-set");
+  $("stepCap").textContent = gazeCap();
+}
+// 封印＝所選的那枚星徽
+function setSealCoin(sp) { const s = $("seal"); s.style.setProperty("--coin", `url(${new URL(`assets/spreads/${sp}.webp`, location.href).href})`); s.setAttribute("aria-label", `按住「${SIGILS.find(x => x[0] === sp)[1]}」星徽，獻上所問`); }
+// 轉動：正中那枚先隱去封印、星徽滑進正中，停穩後封印接手（同一枚圖，看起來就是它停在那裡）
+let carT = null;
+function rotateTo(sp) {
+  const seal = $("seal"); seal.classList.add("arriving"); seal.classList.remove("landed"); stage.classList.add("car-moving");
+  placeCarousel(true); paintSpreadInfo(sp); clearTimeout(carT);
+  carT = setTimeout(() => { setSealCoin(sp); seal.classList.remove("arriving"); stage.classList.remove("car-moving"); void seal.offsetWidth; seal.classList.add("landed"); }, D(580));
 }
 function chooseSpread(sp, focus = false) {
   if (S.busy || S.phase !== "ask" || step !== 2) return;
   const changed = sp !== S.spread || !S.spreadSet;
+  if (!changed) return;
   S.spread = sp; S.spreadSet = true; requestAnimationFrame(() => renderSlots());
-  [...sigilsEl.children].forEach(b => { const on = b.dataset.sp === sp; b.setAttribute("aria-checked", on); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus(); });
-  $("seal").disabled = false; stage.classList.add("spread-set");
-  $("stepCap").textContent = gazeCap();
-  if (changed) {
-    whisper(SP_WHISPER[sp]); audio.rustle(); audio.bowl(147, 0.07);
-    // 選中：星徽浮起、亮起，外圍漾開一圈金環（CSS）；重選時重播
-    const i = sigilsEl.querySelector(`[data-sp="${sp}"] i`); i.classList.remove("pick"); void i.offsetWidth; i.classList.add("pick");
-  }
+  rotateTo(sp); if (focus) $("seal").focus();
+  $("stepCap").textContent = gazeCap(); audio.rustle(); audio.bowl(147, 0.06);
 }
-sigilsEl.addEventListener("click", e => { const b = e.target.closest("button"); if (b) chooseSpread(b.dataset.sp); });
+sigilsEl.addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.d !== "0") chooseSpread(b.dataset.sp); });
+const turn = k => { const i = SIGILS.findIndex(x => x[0] === S.spread); chooseSpread(SIGILS[(i + k + SIGILS.length) % SIGILS.length][0]); };
+let swipe = null;
+stage.addEventListener("pointerdown", e => { if (S.phase === "ask" && step === 2 && e.clientY > 0) swipe = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+stage.addEventListener("pointerup", e => {
+  if (!swipe) return; const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, quick = performance.now() - swipe.t < 700; swipe = null;
+  if (S.phase === "ask" && step === 2 && quick && Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) { turn(dx < 0 ? 1 : -1); $("seal").dispatchEvent(new PointerEvent("pointercancel")); }
+});
 sigilsEl.addEventListener("keydown", e => {
   const k = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!k) return;
   e.preventDefault(); const i = SIGILS.findIndex(x => x[0] === S.spread); chooseSpread(SIGILS[(i + k + SIGILS.length) % SIGILS.length][0], true);
@@ -332,16 +373,29 @@ async function shuffle() {
   // 切牌：分成三疊，由求問者選一疊放到最上面
   setPhase("cut"); hands.dataset.pose = "rest";
   const n = S.cards.length, c1 = Math.round(n * (0.28 + Math.random() * 0.1)), c2 = Math.round(n * (0.6 + Math.random() * 0.1)), cut = [0, c1, c2, n], piles = [0, 1, 2].map(j => S.cards.slice(cut[j], cut[j + 1]));
-  const px = j => tc.x + (j - 1) * Math.min(tc.w * 0.32, 130);
-  await tween(600, p => piles.forEach((pl, j) => pl.forEach((c, k) => put(c, c.x + (px(j) - c.x) * ease(p), c.y + (tc.y - k * 0.6 - c.y) * ease(p), c.rot * (1 - ease(p)), sc))));
-  piles.forEach(pl => pl.forEach((c, k) => { c.el.style.zIndex = 20 + k; c.el.classList.add("tappable"); }));
-  $("cutHint").hidden = false; S.busy = false;
-  const chosen = await new Promise(res => { const h = e => { const j = [0, 1, 2].reduce((b, j) => (Math.abs(px(j) - e.clientX) < Math.abs(px(b) - e.clientX) ? j : b), 0); if (Math.abs(e.clientY - tc.y) < tc.h) { stage.removeEventListener("pointerup", h); res(j); } }; stage.addEventListener("pointerup", h); });
-  S.busy = true; $("cutHint").hidden = true; S.cards.forEach(c => c.el.classList.remove("tappable")); audio.land();
-  const top = piles[chosen], rest = piles.filter((_, j) => j !== chosen).flat();
-  await tween(450, p => top.forEach((c, k) => put(c, c.x, tc.y - k * 0.6 - 40 * Math.sin(p * Math.PI), 0, sc)));
-  const stack = [...rest, ...top]; // 選中的那疊放在最上面
-  await tween(500, p => stack.forEach((c, k) => put(c, c.x + (tc.x - c.x) * ease(p), c.y + (tc.y - k * 0.4 - c.y) * ease(p), 0, sc)));
+  // 三疊放在畫中祭壇的石桌上：縮小、有厚度，像真的擺在桌面
+  const ar = $("brazier").getBoundingClientRect(), stR = stage.getBoundingClientRect(), cw0 = S.cards[0].el.offsetWidth;
+  const ps = Math.min(sc * 0.72, (ar.width * 0.24) / cw0), ay = ar.top + ar.height * 0.5 - stR.top + 4, ax = ar.left + ar.width / 2 - stR.left;
+  const gapX = Math.min(ar.width * 0.34, cw0 * ps * 1.75), px = j => ax + (j - 1) * gapX, py = k => ay - S.cards[0].el.offsetHeight * ps * 0.5 - k * 0.9;
+  fire.set({ power: 0.45 });
+  await tween(700, p => piles.forEach((pl, j) => pl.forEach((c, k) => put(c, c.x + (px(j) - c.x) * ease(p), c.y + (py(k) - c.y) * ease(p), c.rot * (1 - ease(p)), sc + (ps - sc) * ease(p)))));
+  piles.forEach(pl => pl.forEach((c, k) => { c.el.style.zIndex = 20 + k; c.el.classList.add("tappable", "piled"); }));
+  const ch0 = S.cards[0].el.offsetHeight * ps, cutHint = $("cutHint");
+  cutHint.style.top = ay + 14 + "px"; cutHint.hidden = false; stage.classList.add("cutting"); S.busy = false;
+  const chosen = await new Promise(res => { const h = e => { const x = e.clientX - stR.left, y = e.clientY - stR.top; const j = [0, 1, 2].reduce((b, j) => (Math.abs(px(j) - x) < Math.abs(px(b) - x) ? j : b), 0); if (Math.abs(px(j) - x) < gapX * 0.6 && y > ay - ch0 * 1.6 && y < ay + 30) { stage.removeEventListener("pointerup", h); res(j); } }; stage.addEventListener("pointerup", h); });
+  S.busy = true; cutHint.hidden = true; stage.classList.remove("cutting"); S.cards.forEach(c => c.el.classList.remove("tappable")); audio.rustle();
+  const top = piles[chosen], rest = piles.filter((_, j) => j !== chosen);
+  // 另外兩疊先併成一疊（放在中間），選中的那疊升起、越過去，落在最上面
+  const base = rest.flat();
+  await tween(420, p => base.forEach((c, k) => put(c, c.x + (ax - c.x) * ease(p), c.y + (py(k) - c.y) * ease(p), 0, ps)));
+  base.forEach((c, k) => (c.el.style.zIndex = 20 + k));
+  top.forEach((c, k) => (c.el.style.zIndex = 60 + k));
+  const t0 = top.map(c => ({ x: c.x, y: c.y }));
+  await tween(560, p => top.forEach((c, k) => { const e = ease(p); put(c, t0[k].x + (ax - t0[k].x) * e, t0[k].y + (py(base.length + k) - t0[k].y) * e - ch0 * 1.1 * Math.sin(p * Math.PI), 0, ps); }));
+  audio.land(); fire.set({ power: 1 });
+  const stack = [...base, ...top]; // 選中的那疊放在最上面
+  stack.forEach(c => c.el.classList.remove("piled"));
+  await tween(560, p => stack.forEach((c, k) => put(c, c.x + (tc.x - c.x) * ease(p), c.y + (tc.y - k * 0.4 - c.y) * ease(p), 0, ps + (sc - ps) * ease(p))));
   stack.forEach((c, k) => (c.el.style.zIndex = 20 + k));
   S.cards = stack.reverse(); // 由上而下
   // 展牌：一手抹開，排成一列
@@ -371,7 +425,7 @@ async function ribbon() {
 }
 function updateDrawHint() {
   const left = SPREADS[S.spread].positions.length - S.picked.length;
-  hint.innerHTML = left ? `隨心取牌，尚須 ${left} 張<small>滑過牌列再放開，或將牌拖上石桌</small>` : "";
+  hint.innerHTML = left ? `隨心取牌，還差 ${left} 張<small>手指滑過牌列再放開，或把牌拖到石桌上</small>` : "";
 }
 
 // ---------------- 抽牌 ----------------
@@ -430,7 +484,7 @@ async function endDraw() {
   await tween(650, p => rest.forEach(c => { put(c, c.fx + (tc.x - c.fx) * ease(p), c.fy + 60 * ease(p), c.frot * (1 - p), c.fs); c.el.style.opacity = 1 - p; }));
   rest.forEach(c => c.el.remove());
   setPhase("flip"); hands.dataset.pose = "reveal";
-  hint.textContent = "觸牌翻開，領受神諭"; $("flipAll").hidden = SPREADS[S.spread].positions.length < 2;
+  hint.textContent = "點牌翻開，領受神諭"; $("flipAll").hidden = SPREADS[S.spread].positions.length < 2;
   S.cards.filter(c => c.picked).forEach(c => { c.el.classList.add("tappable"); c.el.onclick = () => flip(c); });
   S.busy = false;
 }
@@ -516,17 +570,17 @@ function paintVoice(text, done) {
   });
   while (box.children.length > items.length) box.lastElementChild.remove();
   $("voice").classList.toggle("speaking", !done); $("voiceWait").hidden = !!text.trim();
-  if (done && aiQuota.user != null) $("voiceNote").textContent = `今日神力尚可應汝 ${aiQuota.user} 次`;
+  if (done && aiQuota.user != null) $("voiceNote").textContent = `今天女祭司還能為你開口 ${aiQuota.user} 次`;
 }
 const QUOTA_MSG = {
-  quota_user: n => ["神力耗盡", `今日女祭司已為汝開口 ${n || 5} 次，神力暫竭。\n此殿不收分文，故每位求問者一日以 ${n || 5} 次為限。\n此番改依古法解讀；待子夜過後神力復甦，再來叩問。`],
-  quota_site: n => ["神力耗盡", `今日求問者眾，殿中神力已然耗盡。\n此殿不收分文，故全殿眾人一日共以 ${n || 100} 次為限。\n此番改依古法解讀；待子夜過後，再來叩問。`]
+  quota_user: n => ["神力耗盡", `今天女祭司已經為你開口 ${n || 5} 次，神力用完了。\n這座神殿不收費，所以每人每天以 ${n || 5} 次為限。\n這次改用古法解讀；過了午夜神力恢復，再來問吧。`],
+  quota_site: n => ["神力耗盡", `今天來問的人太多，殿中的神力已經用完了。\n這座神殿不收費，所以全殿每天一共以 ${n || 100} 次為限。\n這次改用古法解讀；過了午夜再來問吧。`]
 };
 function voiceFail(e) {
   const v = $("voice"); if (!v || v.classList.contains("silent")) return;
   v.classList.remove("speaking"); v.classList.add("silent"); $("voiceWait").hidden = true; $("omenLine").hidden = true;
   const quota = QUOTA_MSG[e && e.code];
-  $("voiceNote").textContent = quota ? "神力已竭，此番依古法解讀。" : e && e.code === "rate_limited" ? "求問者眾，神殿一時難應；此番依古法解讀。" : "今夜神氣稀薄，女祭司未能開口；此番依古法解讀。";
+  $("voiceNote").textContent = quota ? "神力用完了，這次改用古法解讀。" : e && e.code === "rate_limited" ? "來問的人太多，女祭司一時應不過來；這次改用古法解讀。" : "今夜神氣太稀薄，女祭司沒能開口；這次改用古法解讀。";
   const deep = $("deep"); deep.open = true; deep.classList.add("lead");
   if (quota) { const n = e.info && (e.info.perUser || e.info.perSite); const [t, b] = quota(n); showNotice(t, b); }
 }
@@ -551,13 +605,13 @@ function openCard(k) {
 function openReading(instant = false) {
   setPhase("read");
   const R = S.R, paras = readingParagraphs(R), useAI = !S.shared || !!S.aiText; // 朋友分享來的神諭若帶著女祭司之言，照樣呈現
-  $("readingIn").innerHTML = `${S.shared ? `<p class="from">友人託付予汝之神諭</p>` : ""}<div class="verdict"><p class="q">所取預兆：${esc(R.topic.label)}　目光落於：${esc(SPREADS[R.spread.id].gaze)}</p>${R.question ? `<p class="asked">汝之所問：「${esc(R.question)}」</p>` : ""}<p class="ans">${esc(R.verdict.text)}</p></div>
+  $("readingIn").innerHTML = `${S.shared ? `<p class="from">朋友傳給你的神諭</p>` : ""}<div class="verdict"><p class="q">所取預兆：${esc(R.topic.label)}　目光落於：${esc(SPREADS[R.spread.id].gaze)}</p>${R.question ? `<p class="asked">你的問題：「${esc(R.question)}」</p>` : ""}<p class="ans">${esc(R.verdict.text)}</p></div>
 <div class="cardstrip">${R.cards.map((c, k) => `<button type="button" class="cs" data-k="${k}" aria-label="看大圖：${esc(c.position)}・${esc(c.name)}${c.orientation}"><span class="cs-face">${faceSVG(c.id, c.rev)}</span>${R.cards.length > 1 ? `<small>${esc(c.position)}</small>` : ""}<b>${esc(c.name)}${c.rev ? "<em>逆</em>" : ""}</b></button>`).join("")}</div>
-${useAI ? `<section class="voice" id="voice" aria-live="polite"><h3>女祭司之言</h3><p class="omen-line" id="omenLine" hidden></p><div class="oracle-text" id="oracleText"></div><p class="voice-wait" id="voiceWait">神氣自地縫升起，女祭司正要開口……</p><p class="voice-note" id="voiceNote"></p></section>` : ""}
+${useAI ? `<section class="voice" id="voice" aria-live="polite"><h3>女祭司之言</h3><p class="omen-line" id="omenLine" hidden></p><div class="oracle-text" id="oracleText"></div><p class="voice-wait" id="voiceWait">神氣從地縫升起，女祭司就要開口……</p><p class="voice-note" id="voiceNote"></p></section>` : ""}
 ${S.shared ? "" : `<div class="acts lead"><button type="button" class="primary" data-share>傳出這則神諭</button></div>`}
 <details class="basic deep${useAI ? "" : " lead"}" id="deep"${useAI ? "" : " open"}><summary>${useAI ? "古法細解" : "神諭細解"}</summary><p class="detail">${esc(R.verdict.detail)}</p><div class="story">${paras.map(p => p.kind === "h" ? `<h3>${p.html}</h3>` : `<p class="${p.kind}" data-cards="${p.cards.join(",")}">${p.html}</p>`).join("")}</div></details>
 <details class="basic"><summary>各牌本義</summary>${R.cards.map(c => `<div class="it"><h4>${esc(c.position)}・${esc(c.name)} <small style="color:var(--mute)">${c.orientation}</small></h4><div class="kw">${esc(c.keywords)}</div><p>${esc(c.rev ? CARDS[c.id][4] : CARDS[c.id][3])}</p></div>`).join("")}</details>
-<div class="acts">${S.shared ? `<button type="button" class="primary" id="again">吾亦求問</button><button type="button" data-share>傳出這則神諭</button>` : `<button type="button" class="primary" id="again">再叩一問</button><button type="button" data-share>傳出這則神諭</button><button type="button" id="copy">抄錄全文</button>`}</div>`;
+<div class="acts">${S.shared ? `<button type="button" class="primary" id="again">我也要問</button><button type="button" data-share>傳出這則神諭</button>` : `<button type="button" class="primary" id="again">再叩一問</button><button type="button" data-share>傳出這則神諭</button><button type="button" id="copy">抄錄全文</button>`}</div>`;
   $("readingIn").scrollTop = 0;
   const sc = $("reading"); sc.hidden = false;
   requestAnimationFrame(() => requestAnimationFrame(() => sc.classList.add("open")));
@@ -602,15 +656,23 @@ function showQuota() {
   fetchQuota().then(q => {
     const el = $("qQuota"); if (!q || q.unlimited) { el.textContent = ""; el.classList.remove("out"); return; }
     const n = Math.min(q.user, q.site);
-    el.textContent = n > 0 ? `今日女祭司尚可應汝 ${n} 次` : "今日神力已竭，此番依古法解讀";
-    el.title = n > 0 ? "" : "免費網站為節省成本，每人每日可請女祭司解讀 5 次；明日子時復盈";
+    el.textContent = n > 0 ? `今天女祭司還能為你開口 ${n} 次` : "今天的神力用完了，這次改用古法解讀";
+    el.title = n > 0 ? "" : "網站免費，為了節省成本，每人每天可以請女祭司解讀 5 次；過了午夜就恢復";
     el.classList.toggle("out", n <= 0);
   });
 }
-const askGo = () => { if (S.phase === "ask" && step === 0) { $("question").blur(); audio.drum(); showStep(1); } };
+const askGo = () => {
+  if (S.phase !== "ask" || step !== 0) return;
+  const q = $("question"), v = q.value.replace(/\s+/g, "");
+  if ([...v].length < 2) {
+    const n = $("qNeed"); n.hidden = false; n.classList.remove("shake"); void n.offsetWidth; n.classList.add("shake");
+    q.classList.remove("shake"); void q.offsetWidth; q.classList.add("shake"); q.focus(); audio.rustle(); $("whisper").classList.add("out"); return;
+  }
+  $("qNeed").hidden = true; q.blur(); audio.drum(); showStep(1);
+};
 $("askGo").addEventListener("click", askGo);
 // 所問的字數
-const updateQCount = () => { const n = [...$("question").value].length; $("qCount").textContent = `${n}／60`; $("qCount").classList.toggle("full", n >= 60); };
+const updateQCount = () => { const n = [...$("question").value].length; $("qCount").textContent = `${n}／60`; $("qCount").classList.toggle("full", n >= 60); $("askGo").classList.toggle("ready", [...$("question").value.replace(/\s+/g, "")].length >= 2); if (n) $("qNeed").hidden = true; };
 $("question").addEventListener("input", updateQCount);
 $("question").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); askGo(); } });
 
@@ -712,8 +774,8 @@ const sharedP = sid && /^[0-9a-zA-Z]{8}$/.test(sid) && CONFIG.AI_ENDPOINT
 function showSharedIntro() {
   const sp = SPREADS[sharedR.spread], cards = sharedR.picked.map((c, k) => `<span class="c">${sp.positions.length > 1 ? `<small>${esc(sp.positions[k])}</small>` : ""}${esc(CARDS[c.i][0])}${c.rev ? "<em>逆</em>" : ""}</span>`).join("");
   const omen = sharedR.ai ? splitOracle(sharedR.ai).omen : "";
-  $("introBody").innerHTML = `<p class="intro-line">有人在神殿前留下一則神諭，託付予汝。</p>${omen ? `<p class="intro-omen">「${esc(omen)}」</p>` : ""}${sharedR.question ? `<p class="intro-shared">所問「${esc(sharedR.question)}」</p>` : `<p class="intro-shared">所取預兆　${esc(TOPIC_LABEL[sharedR.topic] || "任火自顯")}　・　垂視　${esc(sp.gaze)}</p>`}<p class="intro-cards">${cards}</p>`;
-  enterAlt.textContent = "吾亦求問"; enterAlt.hidden = false; mode = "shared";
+  $("introBody").innerHTML = `<p class="intro-line">有人在神殿前留下一則神諭，要交給你。</p>${omen ? `<p class="intro-omen">「${esc(omen)}」</p>` : ""}${sharedR.question ? `<p class="intro-shared">所問「${esc(sharedR.question)}」</p>` : `<p class="intro-shared">所取預兆　${esc(TOPIC_LABEL[sharedR.topic] || "任火自顯")}　・　目光落於　${esc(sp.gaze)}</p>`}<p class="intro-cards">${cards}</p>`;
+  enterAlt.textContent = "我也要問"; enterAlt.hidden = false; mode = "shared";
 }
 if (sharedR) showSharedIntro();
 else if (savedR) { enterAlt.textContent = "重看上回神諭"; enterAlt.hidden = false; }
@@ -746,6 +808,6 @@ async function enter(m) {
   if (m === "shared") return showReading(sharedR, { shared: true });
   if (sharedR) { clearShareParam(); sharedR = null; }
   if (m === "saved") return showReading(savedR);
-  whisper("求問者，汝終於來了"); await wait(1400);
+  whisper("求問者，你終於來了"); await wait(1400);
   showStep(0);
 }

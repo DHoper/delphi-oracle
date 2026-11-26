@@ -35,17 +35,41 @@ export function createFire(canvas, stage, { reduced }) {
       ctx.fillStyle = g; ctx.fillRect(s.x - fh * 2.4, s.y - fh * 2.7, fh * 4.8, fh * 4.8);
       // 祭壇之火：不畫成一整團火焰，而是拆成細件——貼著桌面的一層暖光、上升的細碎餘燼、幾縷細短捲曲的火舌、偶爾竄高的火星
       if (s.altar) {
-        const base = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.w * 0.55);
+        const base = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.w * 0.62);
         base.addColorStop(0, `rgba(${cIn},${0.22 * power})`); base.addColorStop(0.4, `rgba(${cMid},${0.12 * power})`); base.addColorStop(1, `rgba(${cOut},0)`);
-        ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 0.22); ctx.translate(-s.x, -s.y); ctx.fillStyle = base; ctx.beginPath(); ctx.arc(s.x, s.y, s.w * 0.55, 0, 7); ctx.fill(); ctx.restore();
-        if (!reduced) {
-          const n = Math.min(14, Math.round(3.5 * power + Math.random() * 2));
-          for (let k = 0; k < n; k++) {
-            const g = (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; // 近似常態：中間密、兩側疏
-            emb.push({ x: s.x + g * s.w * 0.24, y: s.y - Math.random() * 3, vx: (Math.random() - 0.5) * 0.25, vy: -(0.45 + Math.random() * 1.1) * Math.sqrt(power), life: 1, d: 0.012 + Math.random() * 0.02, r: 0.7 + Math.random() * 1.6, ph: Math.random() * 7, wisp: Math.random() < 0.16, green });
+        ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, 0.18); ctx.translate(-s.x, -s.y); ctx.fillStyle = base; ctx.beginPath(); ctx.arc(s.x, s.y, s.w * 0.62, 0, 7); ctx.fill(); ctx.restore();
+        // 五簇火：沿桌面一字排開，各自忽明忽暗；每簇是幾道線刻的火舌（細弧線）＋上升的餘燼
+        const K = 5, sq = Math.sqrt(power);
+        for (let c = 0; c < K; c++) {
+          const rel = c / (K - 1) - 0.5, cxp = s.x + rel * s.w * 0.78 + noise(ts * 0.7, c * 9) * s.w * 0.02;
+          const st = Math.max(0.15, (0.62 + 0.38 * noise(ts * 1.25, c * 3.7)) * (1 - 0.42 * Math.abs(rel) * 2));
+          const h = s.w * 0.26 * st * (0.75 + 0.35 * sq);
+          ctx.lineCap = "round";
+          const glow = ctx.createRadialGradient(cxp, s.y - h * 0.32, 0, cxp, s.y - h * 0.32, h * 0.62);
+          glow.addColorStop(0, `rgba(${cIn},${0.2 * st})`); glow.addColorStop(0.5, `rgba(${cMid},${0.09 * st})`); glow.addColorStop(1, `rgba(${cOut},0)`);
+          ctx.save(); ctx.translate(cxp, s.y - h * 0.32); ctx.scale(0.62, 1); ctx.translate(-cxp, -(s.y - h * 0.32)); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cxp, s.y - h * 0.32, h * 0.62, 0, 7); ctx.fill(); ctx.restore();
+          // 三片小火焰（淚滴形，底部金黃、往上轉橙並淡去），各自擺動、錯開
+          for (let k = 0; k < 3; k++) {
+            const off = (k - 1) * s.w * 0.022, len = h * (k === 1 ? 1 : 0.68) * (0.85 + 0.3 * Math.abs(noise(ts * 1.9, c * 7 + k))), wb = s.w * (k === 1 ? 0.03 : 0.022) * (0.7 + 0.3 * st);
+            const bx = cxp + off, by = s.y, tip = bx + noise(ts * 2.4, c * 5 + k * 2.1) * len * 0.28;
+            const gr = ctx.createLinearGradient(bx, by, bx, by - len);
+            gr.addColorStop(0, `rgba(${cIn},${0.6 * st})`); gr.addColorStop(0.35, `rgba(${cMid},${0.45 * st})`); gr.addColorStop(1, `rgba(${cOut},0)`);
+            ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(bx - wb, by);
+            ctx.quadraticCurveTo(bx - wb * 1.05, by - len * 0.42, tip, by - len);
+            ctx.quadraticCurveTo(bx + wb * 1.05, by - len * 0.42, bx + wb, by); ctx.closePath(); ctx.fill();
           }
-          if (Math.random() < 0.05 * power) emb.push({ x: s.x + (Math.random() - 0.5) * s.w * 0.2, y: s.y - 4, vx: (Math.random() - 0.5) * 0.8, vy: -(2.2 + Math.random() * 1.8) * Math.sqrt(power), life: 1, d: 0.01, r: 1.1, ph: 0, spark: true, green });
+          // 兩道很淡的金色細弧，帶出線刻的筆意
+          for (let k = 0; k < 2; k++) {
+            const side = (k - 0.5) * s.w * 0.02, len = h * 0.9, sway = noise(ts * 2.1, c * 3 + k * 4) * len * 0.3, bx = cxp + side;
+            ctx.strokeStyle = `rgba(${cMid},${0.22 * st})`; ctx.lineWidth = 0.7;
+            ctx.beginPath(); ctx.moveTo(bx, s.y); ctx.bezierCurveTo(bx + sway * 0.5, s.y - len * 0.35, bx - sway, s.y - len * 0.7, bx + sway * 0.4, s.y - len); ctx.stroke();
+          }
+          if (!reduced) {
+            const n = Math.round((0.5 + Math.random() * 0.8) * st * (0.7 + power * 0.5));
+            for (let k = 0; k < n; k++) emb.push({ x: cxp + (Math.random() - 0.5) * s.w * 0.06, y: s.y - Math.random() * 3, vx: (Math.random() - 0.5) * 0.25, vy: -(0.45 + Math.random() * 1.1) * sq, life: 1, d: 0.013 + Math.random() * 0.02, r: 0.5 + Math.random() * 1.1, ph: Math.random() * 7, wisp: Math.random() < 0.08, green });
+          }
         }
+        if (!reduced && Math.random() < 0.06 * power) emb.push({ x: s.x + (Math.random() - 0.5) * s.w * 0.6, y: s.y - 4, vx: (Math.random() - 0.5) * 0.8, vy: -(2.2 + Math.random() * 1.8) * sq, life: 1, d: 0.01, r: 1.1, ph: 0, spark: true, green });
       }
       if (!reduced && !s.altar && Math.random() < 0.18 * power) spawn(s.x + (Math.random() - 0.5) * fw * 0.6, s.y - fh * 0.4, { up: 0.5 * power, hue: 30 + green * 100 });
     });
@@ -54,7 +78,7 @@ export function createFire(canvas, stage, { reduced }) {
     for (let i = emb.length - 1; i >= 0; i--) {
       const e = emb[i]; e.ph += 0.09; e.x += e.vx + Math.sin(e.ph + ts * 2) * 0.22; e.y += e.vy; e.vy *= 0.993; e.life -= e.d;
       if (e.life <= 0) { emb.splice(i, 1); continue; }
-      const L = e.life, hot = e.green ? [140 + 80 * L, 255, 160 + 60 * L] : [255, 140 + 110 * L, 40 + 170 * L * L];
+      const L = e.life, hot = e.green ? [140 + 80 * L, 255, 160 + 60 * L] : [255, 120 + 95 * L, 40 + 90 * L * L]; // 金橙，不發白
       const col = `rgba(${hot[0] | 0},${hot[1] | 0},${hot[2] | 0},${Math.min(1, L * 1.3) * (e.spark ? 1 : 0.85)})`;
       if (e.wisp) {
         const len = 7 + 9 * L, bend = Math.sin(e.ph * 1.7) * 4;

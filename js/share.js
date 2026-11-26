@@ -107,7 +107,7 @@ function byComma(ctx, text, maxW, sp) {
 // parseOracle → { omen, items: [{ h: 小標或"", t: 含 ** 標記的段落 }] }
 const HEAD = /^[#\s]*[【\[]([^】\]]{1,8})[】\]]\s*[:：]?\s*/;
 export function parseOracle(text) {
-  const blocks = String(text || "").replace(/\r/g, "").replace(/__/g, "**").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  const blocks = String(text || "").replace(/\r/g, "").replace(/__/g, "**").replace(/\s*——\s*|\s*—\s*/g, "，").replace(/，，/g, "，").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
   let omen = "";
   if (blocks.length && !HEAD.test(blocks[0]) && !blocks[0].includes("\n") && blocks[0].replace(/\*\*/g, "").length <= 34) omen = blocks.shift().replace(/\*\*/g, "").replace(/^#+\s*/, "");
   const items = [];
@@ -130,7 +130,7 @@ export function splitOracle(text) {
 const cardsLine = R => R.cards.map(c => `${R.cards.length > 1 ? c.position + "・" : ""}${c.name}${c.rev ? "（逆）" : ""}`).join("　");
 export function shareText(R, ai) {
   const { omen } = splitOracle(ai);
-  return `吾於神諭塔羅求得一諭：「${omen || R.verdict.text}」\n${cardsLine(R)}\n汝亦來求一諭：`;
+  return `我在神諭塔羅求得一則神諭：「${omen || R.verdict.text}」\n${cardsLine(R)}\n你也來求一則：`;
 }
 // 摘錄：女祭司之言的第一段（截到約 n 字，句讀處收尾）；沒有 AI 時用古法判斷說明
 function excerpt(R, ai, n) {
@@ -140,7 +140,7 @@ function excerpt(R, ai, n) {
 }
 // 網頁字型（思源宋體）是依字分段載入的：畫圖前先把這張圖要用到的每個字所在的分段都載入，否則沒載到的字會退回系統字型
 async function fontsReady(text = "") {
-  const t = "神諭塔羅ORACLE汝" + text;
+  const t = "神諭塔羅ORACLE你" + text;
   await Promise.all([`700 64px ${DISP}`, `600 30px ${DISP}`, `600 30px ${LATIN}`, `400 30px ${BODY}`, `600 30px ${BODY}`].map(f => document.fonts.load(f, t)).concat(document.fonts.ready)).catch(() => {});
 }
 const allText = (R, ai, question) => [ai, question, R.verdict.text, R.verdict.detail, ...R.cards.map(c => c.name + c.position + c.orientation + (EPIC[c.id] || []).join("") + (MYTH[c.id] || [""])[0] + (c.reading || ""))].join("");
@@ -208,7 +208,7 @@ export async function renderShareCard(R, { shared = false, ai = "", question = "
   // 底
   if (divider) { const dw = 600, dh = dw * divider.height / divider.width; ctx.drawImage(divider, (W - dw) / 2, H - 250, dw, dh); }
   ctx.font = `600 32px ${DISP}`; ctx.fillStyle = "#e9cf91"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10;
-  spaced(ctx, shared ? "在巨蟒的凝視下，汝亦來求一諭" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H - 150, 6);
+  spaced(ctx, shared ? "在巨蟒的凝視下，你也來求一則神諭" : "在巨蟒的凝視下，抽出你的牌", W / 2, H - 150, 6);
   ctx.font = `600 24px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H - 102, 3);
   return cv;
 }
@@ -295,7 +295,7 @@ export async function renderLongCard(R, { shared = false, ai = "", question = ""
   if (cornerBR) { o.drawImage(cornerBR, W - cs - 24, H2 - cs - 24, cs, cs); o.save(); o.scale(-1, 1); o.drawImage(cornerBR, -cs - 24, H2 - cs - 24, cs, cs); o.restore(); }
   if (divider) { const dw = 600, dh = dw * divider.height / divider.width; o.drawImage(divider, (W - dw) / 2, H2 - 250, dw, dh); }
   o.textBaseline = "alphabetic"; o.font = `600 34px ${DISP}`; o.fillStyle = "#e9cf91"; o.shadowColor = "rgba(0,0,0,.9)"; o.shadowBlur = 10;
-  spaced(o, shared ? "在巨蟒的凝視下，汝亦來求一諭" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H2 - 150, 6);
+  spaced(o, shared ? "在巨蟒的凝視下，你也來求一則神諭" : "在巨蟒的凝視下，抽出你的牌", W / 2, H2 - 150, 6);
   o.font = `600 24px ${LATIN}`; o.fillStyle = "#b8a582"; spaced(o, siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H2 - 100, 3);
   return out;
 }

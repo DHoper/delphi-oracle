@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#060508">
 <title>神諭塔羅</title>
-<meta name="description" content="夜登德爾菲，步入內殿，在巨蟒皮同的凝視下抽出塔羅牌，領受汝之神諭。">
+<meta name="description" content="夜裡登上德爾菲神殿，走進內殿，在巨蟒皮同的凝視下抽出塔羅牌，聽女祭司為你解牌。">
 <!-- 分享預覽（LINE、Facebook、Threads、Discord 等抓這幾行）；網址以 GitHub Pages 為準 -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="神諭塔羅">
 <meta property="og:title" content="神諭塔羅">
-<meta property="og:description" content="向神諭叩問，自火中取一預兆，在巨蟒皮同的凝視下抽出汝之牌。">
+<meta property="og:description" content="寫下你想問的事，從火中取一枚預兆，在巨蟒皮同的凝視下抽出你的牌。">
 <meta property="og:url" content="https://dhoper.github.io/delphi-oracle/">
 <meta property="og:image" content="https://dhoper.github.io/delphi-oracle/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+TC:wght@400;600;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/main.css?v=b9a7409c">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -68,7 +68,7 @@
 
   <div class="knock" id="knock" hidden>
     <p class="knock-count" id="knockCount" aria-live="polite"></p>
-    <button type="button" class="knock-skip" id="knockSkip" hidden>收起，展卷而讀</button>
+    <button type="button" class="knock-skip" id="knockSkip" hidden>略過，直接看解讀</button>
   </div>
 
   <!-- 神諭之聲 -->
@@ -91,27 +91,28 @@
     <section class="step" data-step="1" aria-label="自火中取一預兆">
       <div class="omens" id="omens" role="listbox" aria-label="預兆"></div>
     </section>
-    <section class="step" data-step="2" aria-label="命運三女神垂視，獻上所問">
+    <section class="step" data-step="2" aria-label="命運三女神選定牌陣，獻上所問">
       <button type="button" class="seal" id="seal" aria-label="按住封印，獻上所問" disabled></button>
     </section>
     <p class="cap" id="stepCap" aria-live="polite"></p>
     <nav class="steps" id="steps" aria-label="步驟"></nav>
   </form>
   <!-- 擇牌陣：命運女神的目光落於何處——四枚星象徽記 -->
-  <div class="sigils" id="sigils" role="radiogroup" aria-label="命運三女神將垂視何處"></div>
+  <div class="sigils" id="sigils" role="radiogroup" aria-label="命運三女神將看向何處"></div>
   <!-- 道出所問：刻在石上的一行字，可留白；最多 60 字 -->
   <div class="askq" id="askq">
-    <label class="vh" for="question">汝之所問</label>
-    <textarea id="question" class="inscribe" maxlength="60" rows="2" placeholder="刻下汝之所問，或留白" autocomplete="off" enterkeyhint="done"></textarea>
+    <label class="vh" for="question">你想問的事</label>
+    <textarea id="question" class="inscribe" maxlength="60" rows="2" placeholder="寫下你想問的事，例如：這份工作該換嗎" autocomplete="off" enterkeyhint="done"></textarea>
+    <p class="askq-need" id="qNeed" hidden>先寫下你想問的事，女祭司才能為你解讀</p>
     <p class="askq-meta"><span class="askq-count" id="qCount" aria-hidden="true">0／60</span><span class="askq-quota" id="qQuota"></span></p>
     <button type="button" class="b-main" id="askGo">叩問</button>
   </div>
   <div class="offering" id="offering" aria-hidden="true"></div>
   <p class="whisper out" id="whisper" aria-live="polite"></p>
-  <p class="cuthint" id="cutHint" hidden>切牌：隨心輕觸一疊</p>
+  <p class="cuthint" id="cutHint" hidden>切牌：隨心點一疊</p>
 
   <p class="hint" id="hint" role="status" aria-live="polite"></p>
-  <button type="button" class="flipall" id="flipAll" hidden>一併翻開</button>
+  <button type="button" class="flipall" id="flipAll" hidden>全部翻開</button>
 
   <section class="scroll" id="reading" aria-label="神諭解讀" hidden>
     <div class="scroll-in" id="readingIn"></div>
@@ -140,7 +141,7 @@
     <div class="share-card"><img id="shareImg" alt="神諭圖卡"><i class="share-wait" aria-hidden="true"></i></div>
     <div class="share-side">
       <p class="share-preview" id="sharePreview"></p>
-      <label class="share-q" id="shareQ" hidden><input type="checkbox" id="shareQChk"><i aria-hidden="true"></i>附上汝之所問</label>
+      <label class="share-q" id="shareQ" hidden><input type="checkbox" id="shareQChk"><i aria-hidden="true"></i>附上你的問題</label>
       <p class="share-tip">長圖收錄女祭司之言全文與牌上的故事，可上下捲動預覽；連結在 LINE、Facebook 上會顯示這則神諭的讖語與牌</p>
     <div class="share-acts">
       <button type="button" class="b-main" data-act="native">分享圖片與連結</button>
@@ -180,14 +181,15 @@
     </div>
     <p class="intro-hint" aria-hidden="true">撥開帷幕</p>
     <button type="button" class="b-sub" id="enterAlt" hidden disabled></button>
-    <p class="intro-note">殿中有聲；輕觸右上角的里拉琴，便歸於靜默</p>
+    <p class="intro-note">神殿裡有聲音；點右上角的里拉琴就能關掉</p>
   </div>
   <button type="button" class="intro-skip" id="introSkip" hidden>直接入殿</button>
 </div>
 
 <div class="rotate" aria-hidden="true"><p>請將裝置轉為直向，再走入神殿</p></div>
 
-<noscript><p style="color:#fff;padding:2em">須啟用 JavaScript，神殿之門方能開啟。</p></noscript>
-<script type="module" src="js/main.js"></script>
+<noscript><p style="color:#fff;padding:2em">需要開啟 JavaScript，神殿的門才打得開。</p></noscript>
+<script type="importmap" id="vmap">{"imports": {"./js/ai.js": "./js/ai.js?v=30226c71", "./js/config.js": "./js/config.js?v=047dfcbe", "./js/main.js": "./js/main.js?v=3efd5bed", "./js/oracle-prompt.js": "./js/oracle-prompt.js?v=0219919b", "./js/scene/audio.js": "./js/scene/audio.js?v=1727b3fb", "./js/scene/burn.js": "./js/scene/burn.js?v=3e18b2e6", "./js/scene/fire.js": "./js/scene/fire.js?v=822c48fc", "./js/scene/gate.js": "./js/scene/gate.js?v=2be0f476", "./js/scene/seal.js": "./js/scene/seal.js?v=e615b506", "./js/scene/serpent.js": "./js/scene/serpent.js?v=c92a4a9b", "./js/scene/smoke.js": "./js/scene/smoke.js?v=f09967c1", "./js/scene/temple.js": "./js/scene/temple.js?v=d8a0c66c", "./js/share.js": "./js/share.js?v=1f0a6c0a", "./js/tarot/cardface.js": "./js/tarot/cardface.js?v=b6d71b43", "./js/tarot/data.js": "./js/tarot/data.js?v=63e3cc8d", "./js/tarot/engine.js": "./js/tarot/engine.js?v=7a47e2fe", "./js/tarot/epic.js": "./js/tarot/epic.js?v=b103a512", "./js/tarot/minor.js": "./js/tarot/minor.js?v=1ad1f15e", "./js/tarot/myth.js": "./js/tarot/myth.js?v=54740a72"}}</script>
+<script type="module" src="js/main.js?v=3efd5bed"></script>
 </body>
 </html>

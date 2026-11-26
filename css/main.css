@@ -677,8 +677,8 @@ details.basic[open] summary::after{transform:rotate(-135deg)}
 .share-close{border:0;background:none;padding:6px 18px;font:600 13px/1 var(--f-disp);letter-spacing:.4em;text-indent:.4em;color:var(--mute);cursor:pointer}
 .share-close:hover{color:var(--gold2)}
 @media (min-width:760px) and (min-aspect-ratio:1/1){
-  .share-in{width:min(720px,94vw);grid-template-columns:auto 1fr;grid-template-areas:"h h" "card acts" "card status" "card close";column-gap:28px;padding:44px 24px 22px;align-items:center}
-  .share-in h2{grid-area:h}.share-card{grid-area:card;width:min(260px,34vh)}.share-acts{grid-area:acts;align-self:end}.share-status{grid-area:status}.share-close{grid-area:close;align-self:start}
+  .share-in{width:min(780px,94vw);grid-template-columns:auto 1fr;grid-template-areas:"h h" "card side" "card close";column-gap:30px;padding:44px 26px 22px;align-items:center}
+  .share-in h2{grid-area:h}.share-card{grid-area:card;width:min(300px,38vh)}.share-side{grid-area:side;align-self:end}.share-close{grid-area:close;align-self:start}
 }
 
 /* ================= 11-26 第二輪：祭壇之火、聚焦預兆、道出所問、女祭司之言、看大圖、神力耗盡 ================= */
@@ -803,3 +803,19 @@ details.deep.lead summary{display:none}
 .card .face .burnfx{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none;border-radius:inherit}
 
 /* 提示對話框不套用分享面板的寬螢幕兩欄排版 */
+
+/* 分享面板第二版：讖語摘錄、附上所問、建立短連結時的等待 */
+.share-side{display:grid;justify-items:center;gap:10px;width:100%;max-width:380px}
+.share-preview{margin:0;display:grid;gap:4px;text-align:center}
+.share-preview b{font:700 17px/1.55 var(--f-disp);letter-spacing:.06em;color:var(--gold2);text-wrap:balance}
+.share-preview span{font:13px/1.7 var(--f-body);color:#d9cba9}
+.share-q{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font:600 14px/1 var(--f-disp);letter-spacing:.16em;color:var(--mute);-webkit-user-select:none;user-select:none}
+.share-q input{position:absolute;opacity:0;width:1px;height:1px}
+.share-q i{width:22px;height:22px;border-radius:50%;background:url(../assets/ui/step-off.webp) center/100% no-repeat;transition:filter .3s}
+.share-q input:checked + i{background-image:url(../assets/ui/step-on.webp);filter:drop-shadow(0 0 6px rgba(243,212,139,.7))}
+.share-q input:checked ~ *,.share-q:has(input:checked){color:var(--gold2)}
+.share-q input:focus-visible + i{outline:1px solid var(--gold2);outline-offset:3px}
+.share.linking .share-acts button{filter:brightness(.7);pointer-events:none}
+.share.linking .share-status::after{content:"正在封存這則神諭……";color:var(--mute)}
+.intro-omen{margin:2px 0 0;font:700 clamp(17px,4.8vw,22px)/1.55 var(--f-disp);letter-spacing:.08em;background:linear-gradient(180deg,#fbe7b0,#d9a64e 60%,#a7742c);-webkit-background-clip:text;background-clip:text;color:transparent;text-wrap:balance;filter:drop-shadow(0 2px 6px #000)}
+@media (max-height:700px){.share-card{width:min(200px,50vw,22vh)}}

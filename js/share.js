@@ -22,11 +22,6 @@ export function decodeReading(s) {
 }
 export const siteURL = () => CONFIG.SITE_URL || location.href.split(/[?#]/)[0];
 export const readingURL = code => `${siteURL()}?r=${code}`;
-export function shareText(R) {
-  const cards = R.cards.map(c => `${c.name}${c.rev ? "（逆）" : ""}`).join("、");
-  return `吾於神諭塔羅求得「${R.verdict.text}」——${cards}。汝亦來求一諭：`;
-}
-
 // ---------------- 神諭圖卡 ----------------
 const W = 1080, H = 1920;
 const imgCache = {};
@@ -76,113 +71,200 @@ function drawPlaceholderFace(ctx, i, rev) {
   ctx.fillStyle = "#b8a582"; ctx.font = `${en.length > 16 ? 5.6 : 7}px ${LATIN}`; ctx.fillText(en.toUpperCase(), 60, 177);
 }
 
-export async function renderShareCard(R, { shared = false } = {}) {
-  await Promise.all([`700 64px ${DISP}`, `600 30px ${LATIN}`, `400 30px ${BODY}`, `600 30px ${BODY}`].map(f => document.fonts.load(f, "神諭塔羅ORACLE")).concat(document.fonts.ready)).catch(() => {});
+// 讖語斷行：整句放不下時，優先在逗號、分號處斷開（兩半都放得下才這樣斷），否則照一般斷行
+function byComma(ctx, text, maxW, sp) {
+  const fits = t => ctx.measureText(t).width + sp * (t.length - 1) <= maxW;
+  if (fits(text)) return Object.assign([text], { clean: true });
+  const m = [...text.matchAll(/[，；：]/g)].map(x => x.index + 1).sort((a, b) => Math.abs(a - text.length / 2) - Math.abs(b - text.length / 2));
+  for (const k of m) { const a = text.slice(0, k), b = text.slice(k); if (fits(a) && fits(b)) return Object.assign([a, b], { clean: true }); }
+  return wrap(ctx, text, maxW, sp);
+}
+// 女祭司之言：第一段若是一句短讖語就獨立出來，其餘是正文
+export function splitOracle(text) {
+  const parts = String(text || "").replace(/\r/g, "").replace(/\*\*|__/g, "").split(/\n\s*\n/).map(x => x.replace(/\n+/g, "").trim()).filter(Boolean);
+  return parts.length && parts[0].length <= 34 ? { omen: parts[0], body: parts.slice(1) } : { omen: "", body: parts };
+}
+const cardsLine = R => R.cards.map(c => `${R.cards.length > 1 ? c.position + "・" : ""}${c.name}${c.rev ? "（逆）" : ""}`).join("　");
+export function shareText(R, ai) {
+  const { omen } = splitOracle(ai);
+  return `吾於神諭塔羅求得一諭：「${omen || R.verdict.text}」\n${cardsLine(R)}\n汝亦來求一諭：`;
+}
+// 摘錄：女祭司之言的第一段（截到約 n 字，句讀處收尾）；沒有 AI 時用古法判斷說明
+function excerpt(R, ai, n) {
+  const { body } = splitOracle(ai); let t = body[0] || R.verdict.detail || "";
+  if (t.length > n) { const cut = t.slice(0, n), k = Math.max(cut.lastIndexOf("。"), cut.lastIndexOf("；"), cut.lastIndexOf("，")); t = (k > n * 0.6 ? cut.slice(0, k) : cut) + "……"; }
+  return t;
+}
+async function fontsReady() {
+  await Promise.all([`700 64px ${DISP}`, `600 30px ${LATIN}`, `400 30px ${BODY}`, `600 30px ${BODY}`].map(f => document.fonts.load(f, "神諭塔羅ORACLE汝")).concat(document.fonts.ready)).catch(() => {});
+}
+function drawCard(ctx, c, art, frame, x, y, cw, ch) {
+  ctx.save(); ctx.shadowColor = "rgba(243,212,139,.35)"; ctx.shadowBlur = 40; ctx.fillStyle = "#000"; ctx.fillRect(x, y, cw, ch); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, cw, ch); ctx.clip();
+  if (art) { const s2 = Math.max(cw / art.width, ch / art.height); ctx.drawImage(art, x + (cw - art.width * s2) / 2, y + (ch - art.height * s2) / 2, art.width * s2, art.height * s2); }
+  else { ctx.translate(x, y); ctx.scale(cw / 120, ch / 200); drawPlaceholderFace(ctx, c.id, c.rev); }
+  ctx.restore();
+  if (frame && !art) ctx.drawImage(frame, x - cw * 0.08, y - ch * 0.06, cw * 1.16, ch * 1.12);
+}
+function background(ctx, bg, w, h, strength = 1) {
+  ctx.fillStyle = "#060508"; ctx.fillRect(0, 0, w, h);
+  if (bg) { const s = Math.max(w / bg.width, h / bg.height), dw = bg.width * s, dh = bg.height * s; ctx.drawImage(bg, (w - dw) / 2, (h - dh) * 0.15, dw, dh); }
+  let g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, `rgba(6,5,8,${0.8 * strength})`); g.addColorStop(0.18, `rgba(6,5,8,${0.45 * strength})`); g.addColorStop(0.5, `rgba(6,5,8,${0.7 * strength})`); g.addColorStop(1, `rgba(6,5,8,${0.95})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  g = ctx.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.3, w / 2, h * 0.45, Math.max(w, h) * 0.75); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.55)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+}
+
+// 直幅圖卡（1080×1920，限時動態）：讖語為主標、正式牌圖、女祭司之言摘錄
+export async function renderShareCard(R, { shared = false, ai = "", question = "" } = {}) {
+  await fontsReady();
   const [bg, frame, divider, cornerTR, cornerBR] = await Promise.all(["assets/sanctum/temple-portrait.webp", "assets/ui/slot-frame.webp", "assets/ui/divider.webp", "assets/ui/corner-tr.webp", "assets/ui/corner-br.webp"].map(loadImg));
   const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
-
-  // 底：內殿全景（直幅），巨蟒在上方凝視；四周與下半壓暗，讓牌與字讀得清楚
-  ctx.fillStyle = "#060508"; ctx.fillRect(0, 0, W, H);
-  if (bg) { const s = Math.max(W / bg.width, H / bg.height), dw = bg.width * s, dh = bg.height * s; ctx.drawImage(bg, (W - dw) / 2, 0, dw, dh); }
-  let g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "rgba(6,5,8,.78)"); g.addColorStop(0.1, "rgba(6,5,8,.25)"); g.addColorStop(0.3, "rgba(6,5,8,.2)"); g.addColorStop(0.42, "rgba(6,5,8,.72)"); g.addColorStop(1, "rgba(6,5,8,.94)");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  g = ctx.createRadialGradient(W / 2, H * 0.45, W * 0.3, W / 2, H * 0.45, W * 0.95); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.55)");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-  // 四角月桂
-  const cs = 210;
-  if (cornerTR) { ctx.drawImage(cornerTR, W - cs - 28, 28, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerTR, -cs - 28, 28, cs, cs); ctx.restore(); }
-  if (cornerBR) { ctx.drawImage(cornerBR, W - cs - 28, H - cs - 28, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerBR, -cs - 28, H - cs - 28, cs, cs); ctx.restore(); }
-
-  // 標題
-  ctx.textBaseline = "alphabetic"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 18;
-  ctx.font = `700 76px ${DISP}`; ctx.fillStyle = goldFill(ctx, 90, 170); spaced(ctx, "神諭塔羅", W / 2, 168, 34);
-  ctx.font = `600 24px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, "ORACLE TAROT · DELPHI", W / 2, 218, 7);
-
-  // 牌：依牌陣橫排，牌框用牌位素材
-  const n = R.cards.length, cw = n === 1 ? 360 : 268, ch = cw / 0.6, gap = 52, top = 700;
-  const total = n * cw + (n - 1) * gap, x0 = (W - total) / 2;
-  ctx.font = `600 34px ${DISP}`; ctx.fillStyle = "#b8a582";
+  background(ctx, bg, W, H);
+  const cs = 190;
+  if (cornerTR) { ctx.drawImage(cornerTR, W - cs - 26, 26, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerTR, -cs - 26, 26, cs, cs); ctx.restore(); }
+  if (cornerBR) { ctx.drawImage(cornerBR, W - cs - 26, H - cs - 26, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerBR, -cs - 26, H - cs - 26, cs, cs); ctx.restore(); }
+  ctx.textBaseline = "alphabetic"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 16;
+  ctx.font = `700 64px ${DISP}`; ctx.fillStyle = goldFill(ctx, 90, 160); spaced(ctx, "神諭塔羅", W / 2, 150, 30);
+  ctx.font = `600 22px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, "ORACLE TAROT · DELPHI", W / 2, 194, 7);
+  // 先量好每一塊的高度，整組在標題與頁尾之間垂直置中
+  const n = R.cards.length, cw = n === 1 ? 380 : 300, ch = cw * 1252 / 732, gap = 36, total = n * cw + (n - 1) * gap, x0 = (W - total) / 2;
+  const { omen } = splitOracle(ai), hero = omen || R.verdict.text;
+  ctx.font = `600 32px ${DISP}`; const ql = question ? wrap(ctx, `所問「${question}」`, 900, 2).slice(0, 2) : [];
+  ctx.font = `700 58px ${DISP}`; const hl = byComma(ctx, hero, 900, 6).slice(0, 2);
+  ctx.font = `400 33px ${BODY}`; const ex = excerpt(R, ai, 190), el = ex ? wrap(ctx, ex, 880, 1).slice(0, 7) : []; const lh = 54;
+  const blockH = (ql.length ? ql.length * 46 + 24 : 0) + (n > 1 ? 50 : 10) + ch + 70 + 70 + hl.length * 80 + 10 + (el.length ? el.length * lh + 50 : 0);
+  const avail = (H - 280) - 230; let y = 230 + Math.max(0, (avail - blockH) / 2);
+  if (ql.length) { ctx.font = `600 32px ${DISP}`; ctx.fillStyle = "#e6d3a6"; ql.forEach((l, k) => spaced(ctx, l, W / 2, y + 32 + k * 46, 2)); y += ql.length * 46 + 24; }
+  const top = y + (n > 1 ? 50 : 10);
   R.cards.forEach((c, k) => {
     const x = x0 + k * (cw + gap);
-    ctx.shadowBlur = 0; ctx.fillStyle = "#c9b48a"; ctx.font = `600 32px ${DISP}`;
-    if (c.position && n > 1) spaced(ctx, c.position, x + cw / 2, top - 44, 10);
-    ctx.shadowColor = "rgba(243,212,139,.35)"; ctx.shadowBlur = 40; ctx.fillStyle = "#000"; ctx.fillRect(x, top, cw, ch); ctx.shadowBlur = 0;
-    ctx.save(); ctx.beginPath(); ctx.rect(x, top, cw, ch); ctx.clip();
-    if (arts[k]) { const im = arts[k], s2 = Math.max(cw / im.width, ch / im.height); ctx.drawImage(im, x + (cw - im.width * s2) / 2, top + (ch - im.height * s2) / 2, im.width * s2, im.height * s2); }
-    else { ctx.translate(x, top); ctx.scale(cw / 120, ch / 200); drawPlaceholderFace(ctx, c.id, c.rev); }
-    ctx.restore();
-    if (frame) ctx.drawImage(frame, x - cw * 0.08, top - ch * 0.06, cw * 1.16, ch * 1.12);
-    ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10;
-    ctx.font = `700 ${c.name.length > 4 ? 34 : 40}px ${DISP}`; ctx.fillStyle = "#f3d48b"; spaced(ctx, c.name, x + cw / 2, top + ch + 96, 4);
-    ctx.font = `400 28px ${BODY}`; ctx.fillStyle = c.rev ? "#d0806f" : "#b8a582"; spaced(ctx, c.orientation, x + cw / 2, top + ch + 140, 8);
+    ctx.shadowBlur = 8; ctx.fillStyle = "#c9b48a"; ctx.font = `600 28px ${DISP}`;
+    if (n > 1) spaced(ctx, c.position, x + cw / 2, top - 18, 10);
+    drawCard(ctx, c, arts[k], frame, x, top, cw, ch);
+    ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10; ctx.font = `700 ${c.name.length > 4 ? 30 : 34}px ${DISP}`; ctx.fillStyle = "#f3d48b";
+    spaced(ctx, c.name + (c.rev ? "・逆" : ""), x + cw / 2, top + ch + 50, 3);
   });
+  y = top + ch + 140;
+  // 讖語（AI 的第一句；沒有就用古法神諭）
+  ctx.font = `700 58px ${DISP}`; ctx.shadowColor = "rgba(0,0,0,.95)"; ctx.shadowBlur = 18;
+  hl.forEach((l, k) => { ctx.fillStyle = goldFill(ctx, y + k * 80 - 52, y + k * 80 + 10); spaced(ctx, l, W / 2, y + k * 80, 6); });
+  y += hl.length * 80 + 24;
+  // 女祭司之言摘錄
+  if (el.length) {
+    ctx.shadowBlur = 8; ctx.font = `400 33px ${BODY}`; ctx.fillStyle = "#ecdfc2";
+    el.forEach((l, k) => spaced(ctx, l, W / 2, y + k * lh, 1));
+    y += el.length * lh + 6;
+    ctx.font = `600 24px ${DISP}`; ctx.fillStyle = "#a99270"; spaced(ctx, ai ? "——女祭司皮媞亞" : "——古法所示", W / 2 + 300, y + 6, 4, "right");
+  }
+  // 底
+  if (divider) { const dw = 600, dh = dw * divider.height / divider.width; ctx.drawImage(divider, (W - dw) / 2, H - 250, dw, dh); }
+  ctx.font = `600 32px ${DISP}`; ctx.fillStyle = "#e9cf91"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10;
+  spaced(ctx, shared ? "在巨蟒的凝視下，汝亦來求一諭" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H - 150, 6);
+  ctx.font = `600 24px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H - 102, 3);
+  return cv;
+}
 
-  // 神諭一句
-  let y = top + ch + 250;
-  ctx.font = `700 56px ${DISP}`; const lines = wrap(ctx, R.verdict.text, 860, 6);
-  ctx.shadowColor = "rgba(0,0,0,.95)"; ctx.shadowBlur = 16;
-  lines.slice(0, 3).forEach((l, k) => { ctx.fillStyle = goldFill(ctx, y + k * 80 - 50, y + k * 80 + 10); spaced(ctx, l, W / 2, y + k * 80, 6); });
-  y += Math.min(3, lines.length) * 80 + 6;
-  ctx.shadowBlur = 0; ctx.font = `400 28px ${BODY}`; ctx.fillStyle = "#b8a582";
-  spaced(ctx, `所問　${R.topic.label}　・　目光落於　${SPREADS[R.spread.id].gaze}`, W / 2, y, 2);
-
-  // 底部：分隔線、邀請與網址
-  if (divider) { const dw = 640, dh = dw * divider.height / divider.width; ctx.drawImage(divider, (W - dw) / 2, H - 300, dw, dh); }
-  ctx.font = `600 34px ${DISP}`; ctx.fillStyle = "#e9cf91"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10;
-  spaced(ctx, shared ? "在巨蟒的凝視下，汝亦來求一諭" : "在巨蟒的凝視下，抽出汝之牌", W / 2, H - 186, 6);
-  ctx.font = `600 26px ${LATIN}`; ctx.fillStyle = "#b8a582"; spaced(ctx, siteURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H - 132, 3);
+// 橫幅預覽圖（1200×630）：分享連結在 LINE、Facebook、Threads 上顯示的那張圖
+export async function renderOG(R, { ai = "" } = {}) {
+  await fontsReady();
+  const [bg, frame] = await Promise.all(["assets/sanctum/temple-wide.webp", "assets/ui/slot-frame.webp"].map(loadImg));
+  const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
+  const w = 1200, h = 630, cv = document.createElement("canvas"); cv.width = w; cv.height = h; const ctx = cv.getContext("2d");
+  background(ctx, bg, w, h, 1.05);
+  const n = R.cards.length, ch = n > 1 ? 400 : 440, cw = ch * 732 / 1252, gap = 16, x0 = 48, y0 = (h - ch) / 2 + 10;
+  R.cards.forEach((c, k) => {
+    const x = x0 + k * (cw + gap) * (n > 1 ? 1 : 1);
+    ctx.save(); ctx.translate(x + cw / 2, y0 + ch / 2); ctx.rotate((n > 1 ? (k - 1) * 0.04 : 0)); ctx.translate(-(x + cw / 2), -(y0 + ch / 2));
+    drawCard(ctx, c, arts[k], frame, x, y0, cw, ch); ctx.restore();
+  });
+  const tx = x0 + n * (cw + gap) + 30, tw = w - tx - 50, cxm = tx + tw / 2;
+  ctx.textBaseline = "alphabetic"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 14;
+  ctx.font = `700 34px ${DISP}`; ctx.fillStyle = goldFill(ctx, 70, 110); spaced(ctx, "神諭塔羅", cxm, 108, 14);
+  const { omen } = splitOracle(ai), hero = omen || R.verdict.text;
+  let fs = 44, hl = [];
+  for (fs of [44, 40, 36, 33, 30]) { ctx.font = `700 ${fs}px ${DISP}`; hl = byComma(ctx, hero, tw, 3); if (hl.clean) break; }
+  hl = hl.slice(0, 3); const lh = fs * 1.45;
+  let y = 230 - (hl.length - 1) * lh / 2;
+  hl.forEach((l, k) => { ctx.fillStyle = goldFill(ctx, y + k * lh - fs, y + k * lh + 8); spaced(ctx, l, cxm, y + k * lh, 3); });
+  y += hl.length * lh + 18;
+  ctx.shadowBlur = 6; ctx.font = `400 24px ${BODY}`; ctx.fillStyle = "#e3d4b2";
+  wrap(ctx, excerpt(R, ai, 64), tw, 1).slice(0, 3).forEach((l, k) => spaced(ctx, l, cxm, y + k * 38, 1));
+  ctx.font = `600 22px ${DISP}`; ctx.fillStyle = "#b8a582"; spaced(ctx, R.cards.map(c => c.name + (c.rev ? "・逆" : "")).join("　"), cxm, h - 58, 3);
   return cv;
 }
 
 // ---------------- 分享面板 ----------------
-export function createShareSheet({ audio } = {}) {
+// 按下分享時才把這則神諭存到 Worker、換成短連結（朋友點開能看到完整的女祭司之言；連結在社群上有專屬標題與預覽圖）
+export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) {
   const $ = id => document.getElementById(id);
-  const sheet = $("share"), img = $("shareImg"), status = $("shareStatus");
-  let blob = null, url = "", R = null, text = "", blobURL = "";
+  const sheet = $("share"), img = $("shareImg"), status = $("shareStatus"), qBox = $("shareQ"), qChk = $("shareQChk"), pv = $("sharePreview");
+  let blob = null, R = null, code = "", ai = "", question = "", shared = false, blobURL = "", link = null;
   const canShareFiles = f => { try { return !!(navigator.canShare && navigator.canShare({ files: [f] })); } catch (_) { return false; } };
-  const say = t => { status.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => (status.textContent = ""), 2400); };
+  const say = t => { status.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => (status.textContent = ""), 2600); };
   async function copy(t) {
     try { await navigator.clipboard.writeText(t); return true; }
     catch (_) { const ta = document.createElement("textarea"); ta.value = t; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (_) {} ta.remove(); return ok; }
   }
-  const open = (u, w = 620, h = 680) => window.open(u, "_blank", `noopener,width=${w},height=${h}`);
-  const actions = {
-    native: async () => {
-      const file = new File([blob], "oracle-tarot.jpg", { type: "image/jpeg" });
+  const withQ = () => !!(question && qChk && qChk.checked);
+  // 短連結：同一則內容只建立一次；Worker 不通時退回 ?r= 長連結（只含牌陣）
+  function getLink() {
+    if (link && link.q === withQ()) return link.p;
+    const q = withQ();
+    const p = (async () => {
+      if (!endpoint) return readingURL(code);
       try {
-        if (canShareFiles(file)) await navigator.share({ files: [file], text: text + url });
-        else await navigator.share({ title: "神諭塔羅", text, url });
-      } catch (e) { if (e && e.name !== "AbortError") say("無法開啟分享"); }
-    },
+        const og = (await renderOG(R, { ai })).toDataURL("image/jpeg", 0.84);
+        const res = await fetch(endpoint + "share", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, omen: splitOracle(ai).omen, text: ai, question: q ? question : "", verdict: R.verdict.text, cards: R.cards.map(c => c.name + (c.rev ? "（逆）" : "")).join("、"), og }) });
+        if (!res.ok) throw new Error("http " + res.status);
+        return (await res.json()).url;
+      } catch (_) { return readingURL(code); }
+    })();
+    link = { q, p }; return p;
+  }
+  const text = () => shareText(R, ai);
+  const open = (u, w = 620, h = 680) => window.open(u, "_blank", `noopener,width=${w},height=${h}`);
+  const busy = async fn => { sheet.classList.add("linking"); try { await fn(); } finally { sheet.classList.remove("linking"); } };
+  const actions = {
+    native: () => busy(async () => {
+      const url = await getLink(), file = new File([blob], "oracle-tarot.jpg", { type: "image/jpeg" });
+      try { if (canShareFiles(file)) await navigator.share({ files: [file], text: text() + url }); else await navigator.share({ title: "神諭塔羅", text: text(), url }); }
+      catch (e) { if (e && e.name !== "AbortError") say("無法開啟分享"); }
+    }),
     save: () => { const a = document.createElement("a"); a.href = blobURL; a.download = "oracle-tarot.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下神諭圖卡"); },
-    line: () => open(`https://line.me/R/share?text=${encodeURIComponent(text + url)}`),
-    facebook: () => open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`),
-    threads: () => open(`https://www.threads.net/intent/post?text=${encodeURIComponent(text + url)}`),
-    link: async () => say((await copy(url)) ? "已複製神諭連結" : "無法複製，請長按網址列"),
-    text: async () => say((await copy(R.plain)) ? "已抄錄全文" : "無法抄錄")
+    line: () => busy(async () => open(`https://line.me/R/share?text=${encodeURIComponent(text() + (await getLink()))}`)),
+    facebook: () => busy(async () => open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(await getLink())}`)),
+    threads: () => busy(async () => open(`https://www.threads.net/intent/post?text=${encodeURIComponent(text() + (await getLink()))}`)),
+    link: () => busy(async () => say((await copy(text() + (await getLink()))) ? "已複製神諭與連結" : "無法複製"))
   };
+  // 部分瀏覽器擋非同步開窗：先預備好短連結
   sheet.addEventListener("click", e => {
     const b = e.target.closest("[data-act]"); if (b) { actions[b.dataset.act](); return; }
     if (e.target.closest("[data-close]") || e.target === sheet) close();
   });
+  async function paint() {
+    img.removeAttribute("src"); sheet.classList.add("busy");
+    const cv = await renderShareCard(R, { shared, ai, question: withQ() ? question : "" });
+    blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9));
+    if (blobURL) URL.revokeObjectURL(blobURL); blobURL = URL.createObjectURL(blob); img.src = blobURL;
+    sheet.classList.remove("busy");
+  }
+  if (qChk) qChk.addEventListener("change", () => { paint(); getLink(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !sheet.hidden) close(); });
   function close() { sheet.classList.remove("open"); setTimeout(() => (sheet.hidden = true), 350); }
   return {
-    async open(reading, code, { shared = false, plain = "" } = {}) {
-      R = reading; R.plain = plain; url = readingURL(code); text = shareText(R);
-      sheet.hidden = false; requestAnimationFrame(() => sheet.classList.add("open"));
-      img.removeAttribute("src"); sheet.classList.add("busy"); status.textContent = "";
-      const cv = await renderShareCard(R, { shared });
-      blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9));
-      if (blobURL) URL.revokeObjectURL(blobURL); blobURL = URL.createObjectURL(blob); img.src = blobURL;
-      sheet.classList.remove("busy");
-      const file = new File([blob], "oracle-tarot.jpg", { type: "image/jpeg" });
+    async open(reading, c, opts = {}) {
+      R = reading; code = c; ai = opts.ai || ""; question = opts.question || ""; shared = !!opts.shared; link = null;
+      if (qBox) { qBox.hidden = !question; if (qChk) qChk.checked = false; }
+      const { omen } = splitOracle(ai);
+      pv.innerHTML = `<b>「${esc(omen || R.verdict.text)}」</b><span>${esc(excerpt(R, ai, 70))}</span>`;
+      sheet.hidden = false; requestAnimationFrame(() => sheet.classList.add("open")); status.textContent = "";
       sheet.querySelector('[data-act="native"]').hidden = !navigator.share;
-      sheet.classList.toggle("files", canShareFiles(file));
+      await paint(); getLink();
       if (audio) audio.rustle();
     }
   };
 }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

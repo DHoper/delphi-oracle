@@ -11,6 +11,9 @@ DAILY_PER_USER = "5"
 DAILY_SITE = "100"
 # 求問者寫下的問題最多幾個字
 QUESTION_MAX = "60"
+# 分享：每日最多建立幾則分享連結；分享頁轉回的網站網址
+DAILY_SHARE = "400"
+SITE_URL = "https://dhoper.github.io/delphi-oracle/"
 
 # 每個 IP 每 60 秒最多 6 次（防連點、防腳本）
 [[ratelimits]]

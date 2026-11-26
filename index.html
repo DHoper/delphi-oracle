@@ -139,7 +139,10 @@
   <div class="share-in">
     <h2 id="shareTitle">傳出這則神諭</h2>
     <div class="share-card"><img id="shareImg" alt="神諭圖卡"><i class="share-wait" aria-hidden="true"></i></div>
-    <p class="share-tip">長按圖卡可存入相簿，再貼到限時動態</p>
+    <div class="share-side">
+      <p class="share-preview" id="sharePreview"></p>
+      <label class="share-q" id="shareQ" hidden><input type="checkbox" id="shareQChk"><i aria-hidden="true"></i>附上汝之所問</label>
+      <p class="share-tip">長按圖卡可存入相簿，再貼到限時動態；連結在 LINE、Facebook 上會顯示這則神諭的讖語與牌</p>
     <div class="share-acts">
       <button type="button" class="b-main" data-act="native">傳給友人</button>
       <button type="button" data-act="save">存下圖卡</button>
@@ -149,6 +152,7 @@
       <button type="button" data-act="threads">Threads</button>
     </div>
     <p class="share-status" id="shareStatus" role="status" aria-live="polite"></p>
+    </div>
     <button type="button" class="share-close" data-close>收起</button>
   </div>
 </div>

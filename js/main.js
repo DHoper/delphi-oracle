@@ -12,7 +12,7 @@ import { createSeal } from "./scene/seal.js";
 import { aiAvailable, aiReading, aiQuota } from "./ai.js";
 import { MYTH } from "./tarot/myth.js";
 import { EPIC } from "./tarot/epic.js";
-import { encodeReading, decodeReading, createShareSheet } from "./share.js";
+import { encodeReading, decodeReading, createShareSheet, splitOracle } from "./share.js";
 import { createGate, gateImages } from "./scene/gate.js";
 
 const $ = id => document.getElementById(id);
@@ -553,7 +553,7 @@ function openCard(k) {
 }
 function openReading(instant = false) {
   setPhase("read");
-  const R = S.R, paras = readingParagraphs(R), useAI = !S.shared;
+  const R = S.R, paras = readingParagraphs(R), useAI = !S.shared || !!S.aiText; // 朋友分享來的神諭若帶著女祭司之言，照樣呈現
   $("readingIn").innerHTML = `${S.shared ? `<p class="from">友人託付予汝之神諭</p>` : ""}<div class="verdict"><p class="q">所取預兆：${esc(R.topic.label)}　目光落於：${esc(SPREADS[R.spread.id].gaze)}</p>${R.question ? `<p class="asked">汝之所問：「${esc(R.question)}」</p>` : ""}<p class="ans">${esc(R.verdict.text)}</p></div>
 <div class="cardstrip">${R.cards.map((c, k) => `<button type="button" class="cs" data-k="${k}" aria-label="看大圖：${esc(c.position)}・${esc(c.name)}${c.orientation}"><span class="cs-face">${faceSVG(c.id, c.rev)}</span>${R.cards.length > 1 ? `<small>${esc(c.position)}</small>` : ""}<b>${esc(c.name)}${c.rev ? "<em>逆</em>" : ""}</b></button>`).join("")}</div>
 ${useAI ? `<section class="voice" id="voice" aria-live="polite"><h3>女祭司之言</h3><p class="omen-line" id="omenLine" hidden></p><div class="oracle-text" id="oracleText"></div><p class="voice-wait" id="voiceWait">神氣自地縫升起，女祭司正要開口……</p><p class="voice-note" id="voiceNote"></p></section>` : ""}
@@ -573,7 +573,7 @@ ${S.shared ? "" : `<div class="acts lead"><button type="button" class="primary" 
   $("readingIn").querySelectorAll(".cs").forEach(b => (b.onclick = () => openCard(+b.dataset.k)));
   S.cards.filter(c => c.picked).forEach(c => { c.el.onclick = () => openCard(c.slot); });
   $("again").onclick = again;
-  $("readingIn").querySelectorAll("[data-share]").forEach(b => (b.onclick = () => shareSheet.open(R, encodeReading({ spread: S.spread, topic: S.topic, seed: S.seed, picked: S.picked }), { shared: S.shared })));
+  $("readingIn").querySelectorAll("[data-share]").forEach(b => (b.onclick = () => shareSheet.open(R, encodeReading({ spread: S.spread, topic: S.topic, seed: S.seed, picked: S.picked }), { shared: S.shared, ai: S.aiText || (aiRun && aiRun.done && !aiRun.error ? aiRun.text : ""), question: S.question || "" })));
   if ($("copy")) $("copy").onclick = async e => {
     const ai = S.aiText ? `【女祭司之言】\n${cleanAI(S.aiText).trim()}\n\n【古法細解】\n` : "";
     try { await navigator.clipboard.writeText(ai + readingPlainText(R)); e.target.textContent = "已抄錄"; } catch (_) { e.target.textContent = "無法抄錄"; }
@@ -651,7 +651,7 @@ function loadSaved() {
 }
 // 直接攤開一則已有的神諭（上回的，或朋友分享來的）
 function showReading(r, { shared = false } = {}) {
-  S.shared = shared; S.spread = r.spread; S.seed = r.seed; S.question = shared ? "" : r.question || ""; S.aiText = shared ? "" : r.ai || ""; S.topic = TOPIC_LABEL[r.topic] ? r.topic : "auto"; showTopic();
+  S.shared = shared; S.spread = r.spread; S.seed = r.seed; S.question = r.question || ""; S.aiText = r.ai || ""; S.topic = TOPIC_LABEL[r.topic] ? r.topic : "auto"; showTopic();
   S.spreadSet = true; renderSlots(); S.picked = r.picked;
   S.cards = S.picked.map((c, k) => { const o = makeCard(c, k); o.picked = o.flipped = true; o.slot = k; setFaces(o); o.inner.style.transform = "rotateY(180deg)"; o.face.style.setProperty("--v", "110%"); o.face.style.setProperty("--r", c.rev ? "125%" : "0%"); return o; });
   S.cards.forEach(c => { slotsEl.children[c.slot].classList.add("filled", "named"); slotsEl.children[c.slot].querySelector(".nm").innerHTML = `${esc(CARDS[c.i][0])}<small>${c.rev ? "逆位" : "正位"}</small>`; });
@@ -685,17 +685,28 @@ window.__delphi = { S, flip, drawCard, again, offer, sealFx, chooseSpread };
 // ---------------- 進入畫面：山巒上的神殿 → 撥開帷幕 → 內殿見證異相 ----------------
 // 等神殿、內殿、巨蟒與字體載好，帷幕才能撥開；第一次觸碰帷幕時開啟聲音（瀏覽器要求聲音由點擊啟動）
 const shareSheet = createShareSheet({ audio });
-const sharedR = decodeReading(new URLSearchParams(location.search).get("r")), savedR = loadSaved();
+let sharedR = decodeReading(new URLSearchParams(location.search).get("r")); const savedR = loadSaved();
 const introEl = $("intro"), enterAlt = $("enterAlt"), skipBtn = $("introSkip");
 let visited = false; try { visited = !!localStorage.getItem("oracle-visited"); } catch (_) {}
 lid(1, 0); // 巨蟒闔眼，等求問者走進來
 const gate = createGate($("gate"), { reduced, onTouch: () => { if (!audio.on) { audio.toggle(); $("sound").setAttribute("aria-pressed", "true"); } audio.rustle(); } });
 let mode = sharedR ? "shared" : "new";
-if (sharedR) {
+// 朋友分享的神諭：?r= 只有牌陣；?s= 是短連結，向 Worker 取回完整內容（讖語、女祭司之言、可能附上的所問）
+const sid = new URLSearchParams(location.search).get("s");
+const sharedP = sid && /^[0-9a-zA-Z]{8}$/.test(sid) && CONFIG.AI_ENDPOINT
+  ? fetch(`${CONFIG.AI_ENDPOINT}s/${sid}.json`).then(r => (r.ok ? r.json() : null)).catch(() => null) : Promise.resolve(null);
+function showSharedIntro() {
   const sp = SPREADS[sharedR.spread], cards = sharedR.picked.map((c, k) => `<span class="c">${sp.positions.length > 1 ? `<small>${esc(sp.positions[k])}</small>` : ""}${esc(CARDS[c.i][0])}${c.rev ? "<em>逆</em>" : ""}</span>`).join("");
-  $("introBody").innerHTML = `<p class="intro-line">有人在神殿前留下一則神諭，託付予汝。</p><p class="intro-shared">所問　${esc(TOPIC_LABEL[sharedR.topic] || "任火自顯")}　・　目光落於　${esc(sp.gaze)}</p><p class="intro-cards">${cards}</p>`;
-  enterAlt.textContent = "吾亦求問"; enterAlt.hidden = false;
-} else if (savedR) { enterAlt.textContent = "重看上回神諭"; enterAlt.hidden = false; }
+  const omen = sharedR.ai ? splitOracle(sharedR.ai).omen : "";
+  $("introBody").innerHTML = `<p class="intro-line">有人在神殿前留下一則神諭，託付予汝。</p>${omen ? `<p class="intro-omen">「${esc(omen)}」</p>` : ""}${sharedR.question ? `<p class="intro-shared">所問「${esc(sharedR.question)}」</p>` : `<p class="intro-shared">所取預兆　${esc(TOPIC_LABEL[sharedR.topic] || "任火自顯")}　・　垂視　${esc(sp.gaze)}</p>`}<p class="intro-cards">${cards}</p>`;
+  enterAlt.textContent = "吾亦求問"; enterAlt.hidden = false; mode = "shared";
+}
+if (sharedR) showSharedIntro();
+else if (savedR) { enterAlt.textContent = "重看上回神諭"; enterAlt.hidden = false; }
+const sharedReady = sharedP.then(rec => {
+  const r = rec && decodeReading(rec.code); if (!r) return;
+  sharedR = Object.assign(r, { ai: rec.text || "", question: rec.question || "" }); showSharedIntro();
+});
 skipBtn.hidden = !visited;
 const loadImg = src => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = src; });
 const wideNow = stage.clientWidth / stage.clientHeight >= 1.1;
@@ -703,7 +714,7 @@ const jobs = [...gateImages(wideNow), SCENES[wideNow ? "wide" : "portrait"].img,
   .concat([document.fonts.load("700 20px 'Oracle Display'", "神諭塔羅撥開帷幕"), document.fonts.load("600 20px Cinzel", "ORACLE")].map(p => p.catch(() => {})));
 let doneN = 0;
 jobs.forEach(j => j.then(() => { doneN++; const v = Math.round(doneN / jobs.length * 100); $("introBar").style.width = v + "%"; $("introLoad").setAttribute("aria-valuenow", v); }));
-Promise.all(jobs).then(() => { introEl.classList.add("ready"); gate.arm(); enterAlt.disabled = false; });
+Promise.all([...jobs, sharedReady]).then(() => { introEl.classList.add("ready"); gate.arm(); enterAlt.disabled = false; });
 // 另一條路（「吾亦求問」「重看上回的神諭」）與「直接入殿」也一樣要穿過帷幕，只是由帷幕自己拉開
 enterAlt.onclick = () => { mode = sharedR ? "new" : "saved"; gate.open(); };
 skipBtn.onclick = () => gate.open(true);
@@ -719,7 +730,7 @@ async function enter(m) {
   await wait(700); lid(0, 900); // 巨蟒睜眼
   await wait(600);
   if (m === "shared") return showReading(sharedR, { shared: true });
-  if (sharedR) clearShareParam();
+  if (sharedR) { clearShareParam(); sharedR = null; }
   if (m === "saved") return showReading(savedR);
   whisper("求問者，汝終於來了"); await wait(1400);
   showStep(0);

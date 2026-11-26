@@ -5,6 +5,7 @@
 // - DeepSeek 的 SSE 串流原樣轉回網站（OpenAI 相容格式，網站讀 choices[0].delta.content）
 // - 金鑰放在 Worker 的 secret：DEEPSEEK_API_KEY（本機測試用 worker/.dev.vars，不進 git）
 import { oracleMessages } from "../../js/oracle-prompt.js";
+import { handleShare } from "./share.js";
 
 const MAX_BASIS = 9000; // 解讀依據 JSON 的長度上限（三張牌的依據約 2–3 千字）
 
@@ -41,8 +42,10 @@ export default {
   async fetch(req, env) {
     const h = cors(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
-    if (h["Access-Control-Allow-Origin"] !== req.headers.get("Origin")) return json({ error: "origin_not_allowed" }, 403, h);
     const url = new URL(req.url);
+    // 分享連結（預覽頁與圖片給社群爬蟲讀，不檢查來源）
+    if (url.pathname === "/share" || url.pathname.startsWith("/s/")) { const r = await handleShare(req, env, url, h, json); if (r) return r; }
+    if (h["Access-Control-Allow-Origin"] !== req.headers.get("Origin")) return json({ error: "origin_not_allowed" }, 403, h);
     if (req.method === "GET" && url.pathname === "/quota") {
       const q = await quota(req, env);
       return json({ user: q.user, site: q.site, perUser: q.lu, perSite: q.ls }, 200, h);

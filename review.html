@@ -66,6 +66,7 @@ document.getElementById("go").onclick = async e => {
     const pre = box.querySelector("pre");
     const show = t => { const m = t.match(/^\s*(〔底稿[^〕]*〕?)([\s\S]*)$/); pre.innerHTML = m ? `<span class="draft">${esc(m[1])}</span>${esc(m[2])}` : esc(t); };
     try { show(await readOne(aiBasis(R), show)); } catch (err) { pre.innerHTML = `<span class="err">失敗：${esc(err.message)}</span>`; }
+    if (k < CASES.length - 1) await new Promise(r => setTimeout(r, 12000)); // Worker 每個 IP 每分鐘最多 6 次
   }
   e.target.disabled = false;
 };

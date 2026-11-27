@@ -21,7 +21,7 @@ export async function aiAvailable() { return !!CONFIG.AI_ENDPOINT || !!(await ge
 
 export function aiBasis(R) {
   return {
-    問題: R.question || "（求問者沒有說出問題，只取了預兆）", 所取的預兆: R.topic.label, 牌陣: R.spread.positions.join("／"), 命運女神的目光落於: { one: "此刻", time: "因果", choice: "抉擇", mind: "本心" }[R.spread.id],
+    問題: R.question || "（求問者沒有說出問題，只取了預兆）", 所取的預兆: R.topic.label, 牌陣: R.spread.positions.join("／"), 命運女神的目光落於: { one: "單張", time: "因果", choice: "抉擇", mind: "本心" }[R.spread.id],
     // 牌意是「看事情的眼光」；不給分數、元素與現成建議，免得 AI 照念或用吉凶口吻
     牌: R.cards.map(c => ({ 位置: c.position, 牌: `${c.name}（${c.en}）${c.orientation}`, 關鍵詞: c.keywords, 牌意: c.reading, 時機: c.timing || undefined, 牌面畫的神話: MYTH[c.id] ? `${MYTH[c.id][0]}：${MYTH[c.id][c.rev ? 2 : 1]}` : undefined })),
     神諭的傾向: R.verdict.text, 傾向說明: R.verdict.detail, 二選一比較: R.comparison ? `較有利：${R.comparison.favored}` : undefined,
@@ -45,7 +45,7 @@ export function stripDraft(t) {
   if (lead.length < 3 && "〔底稿".startsWith(lead)) return "";
   if (!lead.startsWith("〔底稿")) return s;
   const end = lead.indexOf("〕");
-  return end < 0 ? "" : lead.slice(end + 1).replace(/^\s+/, "");
+  return end < 0 ? "" : lead.slice(end + 1).replace(/^\s+/, "").replace(/^讖語[:：]\s*/, "");
 }
 async function viaEndpoint(R, onText0) {
   const onText = t => onText0(stripDraft(t));

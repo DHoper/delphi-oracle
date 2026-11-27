@@ -699,6 +699,19 @@ function paintVoice(text, done) {
     }
   });
   while (box.children.length > items.length) box.lastElementChild.remove();
+  // 保底：女祭司說完後，凡是還沒出現的牌，一律補進去——不靠小標寫法，牌一定要出現。
+  // 依牌位順序，依序放進還沒有牌、且不是開頭那段直接回答的段落；段落不夠就放在最後一段之後。
+  if (done && R) {
+    const secs = [...box.children], placed = new Set([...box.querySelectorAll(".sec-card [data-card]")].map(b => +b.dataset.card));
+    const free = secs.filter((sec, i) => i > 0 && !sec.querySelector(".sec-card"));
+    R.cards.forEach((c, k) => {
+      if (placed.has(k)) return; placed.add(k);
+      const side = box.querySelectorAll(".sec-card").length % 2 ? "right" : "left";
+      const sec = free.shift();
+      if (sec) { sec.classList.add("has-card"); sec.insertAdjacentHTML("afterbegin", figHTML(R, k, side)); }
+      else { const extra = document.createElement("section"); extra.className = "rise has-card"; extra.innerHTML = figHTML(R, k, side); box.appendChild(extra); }
+    });
+  }
   $("voice").classList.toggle("speaking", !done); $("voiceWait").hidden = !!text.trim();
   if (done && aiQuota.user != null) $("voiceNote").textContent = `今天女祭司還能為你開口 ${aiQuota.user} 次`;
 }

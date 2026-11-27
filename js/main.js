@@ -501,7 +501,6 @@ async function endDraw() {
 function armCards() {
   const rest = S.cards.filter(c => c.picked && !c.flipped);
   rest.forEach((c, i) => { c.el.style.setProperty("--beckon-delay", `${i * 0.35}s`); c.el.classList.toggle("tappable", !S.speaking); });
-  $("flipAll").hidden = S.speaking || rest.length < 2 || S.autoFlip;
 }
 async function flip(c, fast = false) {
   if (c.flipped || S.phase !== "flip") return;
@@ -524,9 +523,6 @@ async function flip(c, fast = false) {
   let shown; const gate = new Promise(r => (shown = r));
   stage.classList.add("entranced"); if (line.heavy) { stage.classList.add("eye-narrow"); audio.hiss(); }
   const spoken = speak(line, { gate, hold: last ? 1500 : 1100 });
-  // 綠煙：地縫的煙轉為幽綠，聚在她說話的地方（話語從煙裡浮出）；話說完才退
-  { const r = utterEl.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    smoke.set({ green: 1, mist: line.heavy ? 1.15 : 0.95, mistY: (r.top - sr.top + 46) / sr.height }); }
   // 牌翻過來時整面是金光；光自牌心向外化開，露出牌圖，邊緣最後褪去
   fire.burst(c.x, c.y, 18, { up: 0.9, spread: 2.2, w: W * 0.9 });
   await tween(fast ? 600 : 1000, p => c.face.style.setProperty("--v", `${(1 - Math.pow(1 - p, 2.2)) * 149 - 24}%`));
@@ -552,7 +548,6 @@ async function flip(c, fast = false) {
   S.flipped++;
   await spoken;
   stage.classList.remove("entranced", "eye-narrow", "eye-warm");
-  smoke.set({ green: 0 }); applyAtmosphere();
   if (S.phase !== "flip") return;
   if (last) { await oracle(); return; }
   S.speaking = false; armCards();
@@ -572,13 +567,6 @@ stage.addEventListener("click", e => {
   idleN = now - idleAt < 6000 ? idleN + 1 : 0; idleAt = now;
   const set = idleN >= 2 ? IDLE.hush : S.flipped ? IDLE.between : IDLE.before, text = set[idleI++ % set.length];
   speak({ lead: "", text, tail: "" }, { hold: 1600 }).then(() => { if (S.phase === "flip" && !S.speaking && performance.now() - idleAt > 2500) utterEl.classList.add("fade"); });
-});
-// 全部翻開：一張一張來，每張都等神諭說完
-$("flipAll").addEventListener("click", async () => {
-  if (S.speaking) return;
-  S.autoFlip = true; armCards();
-  for (const c of S.cards.filter(c => c.picked)) { if (S.phase !== "flip") break; if (!c.flipped) { await wait(400); await flip(c, true); } }
-  S.autoFlip = false;
 });
 
 // ---------------- 神諭：蛇眼亮起、逐字顯現 ----------------
@@ -610,7 +598,10 @@ function speechHTML(str, ms, pause) {
 function fitSpeech(L) {
   utterEl.style.fontSize = "";
   utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead">${esc(L.lead || "")}</span><span class="sp-vis">${esc(L.text || "")}</span></span><span class="sp-tail">${esc(L.tail || "").replace(/\n/g, "<br>")}</span>`;
-  const avail = stage.getBoundingClientRect().bottom - utterEl.getBoundingClientRect().top - 100;
+  // 手機瀏覽器的網址列會吃掉一截畫面：以實際看得到的高度為準；底下要留給「全部翻開」與「翻開下一張」
+  const vv = window.visualViewport, visBottom = Math.min(stage.getBoundingClientRect().bottom, vv ? vv.offsetTop + vv.height : innerHeight);
+  const hr = hint.getBoundingClientRect(), reserve = Math.max(64, visBottom - (hr.height ? hr.top : visBottom - 64)) + 12; // 底下留給「翻開下一張」
+  const avail = visBottom - utterEl.getBoundingClientRect().top - reserve;
   let fs = parseFloat(getComputedStyle(utterEl).fontSize);
   while (utterEl.scrollHeight > avail && fs > 12) { fs -= 0.5; utterEl.style.fontSize = fs + "px"; }
 }

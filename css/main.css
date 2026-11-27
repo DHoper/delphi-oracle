@@ -989,9 +989,3 @@ details.deep.lead summary{display:none}
 .stage.tremor{animation:tremor .42s linear}
 @keyframes tremor{15%{translate:-3px 1px}30%{translate:3px -1px}45%{translate:-2px -2px}60%{translate:2px 1px}75%{translate:-1px 0}}
 @media (prefers-reduced-motion:reduce){.stage.tremor{animation:none}.utter.speech span.cry{animation-name:glyph}}
-/* 神諭湧現（試做）：巨蟒的眼轉為幽綠，畫面下方泛起綠光，話語帶著綠色光暈 */
-.stage.entranced .eyes .e{background:radial-gradient(closest-side,rgba(190,255,205,.95),rgba(60,200,120,.45) 60%,transparent);opacity:.95;filter:drop-shadow(0 0 10px rgba(80,220,140,.6))}
-.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:8;opacity:0;transition:opacity 1.4s ease;background:radial-gradient(ellipse 90% 40% at 50% 74%,rgba(40,170,95,.2),rgba(20,90,50,.08) 55%,transparent 80%)}
-.stage.entranced::after{opacity:1}
-.stage.entranced .utter.speech{filter:drop-shadow(0 2px 5px rgba(0,0,0,.95)) drop-shadow(0 0 12px rgba(70,200,120,.35))}
-.stage.entranced .utter.speech .sp-lead{color:#b9d9b4}

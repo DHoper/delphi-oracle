@@ -1007,3 +1007,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .rite .omens button.focused i{animation:omenNod 1.4s ease-in-out infinite;box-shadow:0 0 0 1px rgba(243,212,139,.9),0 0 30px rgba(255,170,70,.85)}
 @keyframes omenNod{0%,100%{transform:translateY(0) scale(1.42)}50%{transform:translateY(14px) scale(1.42)}}
 @media (prefers-reduced-motion:reduce){.rite .omens button.focused i,.rite .omens button.focused.held i{animation:none}
+
+/* 揭牌的話：斷行平均，句尾不會剩一兩個字掉到下一行 */
+.utter.speech .sp-lead,.utter.speech .sp-vis,.utter.speech .sp-tail,#utter.speech span{text-wrap:pretty}
+#utter.speech .sp-vis{text-wrap:balance}

@@ -14,7 +14,7 @@ export const CONFIG = {
   EXT_DATA: false,
   // 流量統計（填了才會載入；兩個可擇一或都填）
   // Cloudflare Web Analytics：Cloudflare 後台 → Web Analytics → 新增網站 dhoper.github.io → 複製 script 裡的 token
-  CF_ANALYTICS_TOKEN: "",
+  CF_ANALYTICS_TOKEN: "828c8d29a9f04250a3a8183246fa4fbf",
   // GoatCounter：到 goatcounter.com 註冊後的代號（例如 delphi-oracle，即 https://delphi-oracle.goatcounter.com）
   GOATCOUNTER: ""
 };

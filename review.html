@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>女祭司試讀</title>
+<style>
+body{margin:0;padding:16px;background:#0b0908;color:#e9dcc0;font:16px/1.75 "Noto Serif TC","Noto Serif CJK TC",serif}
+h1{font-size:20px;color:#d9ac55;margin:0 0 4px}
+.note{color:#a99270;font-size:14px;margin:0 0 14px}
+button{font:inherit;padding:8px 18px;background:#3a2a12;color:#f3d48b;border:1px solid #8a6a32;cursor:pointer}
+.case{border-top:1px solid #4a3a20;padding:14px 0}
+.case h2{font-size:16px;color:#f3d48b;margin:0}
+.meta{font-size:13px;color:#a99270}
+pre{white-space:pre-wrap;font:inherit;margin:8px 0 0}
+.draft{color:#7fa37f}
+.err{color:#e07a6a}
+</style>
+</head>
+<body>
+<h1>女祭司試讀（內部測試頁）</h1>
+<p class="note">用正式的 Worker 跑固定的 10 個問題，看完整回答（綠字是 AI 自己的底稿，網站上不會顯示）。每按一次會用掉 10 次每日額度。</p>
+<button id="go">開始試讀</button>
+<div id="out"></div>
+<script type="module">
+import { CONFIG } from "./js/config.js";
+import { buildReading } from "./js/tarot/engine.js";
+import { aiBasis } from "./js/ai.js";
+
+// 問題、預兆、牌陣、抽到的牌（固定，方便前後比較）
+const CASES = [
+  ["這次要不要去投票", "gen", "choice", [[21, 0], [16, 1], [12, 0]]],
+  ["我該換工作嗎", "career", "one", [[3, 0]]],
+  ["跟前任還有機會嗎", "love", "time", [[6, 1], [12, 0], [17, 0]]],
+  ["今年要不要買房", "money", "choice", [[4, 0], [7, 1], [9, 0]]],
+  ["最近總是睡不好，心很亂", "health", "mind", [[18, 1], [13, 0], [2, 0]]],
+  ["要不要跟爸媽說我想休學", "growth", "choice", [[0, 0], [5, 1], [11, 0]]],
+  ["下週的面試會過嗎", "career", "one", [[19, 1]]],
+  ["朋友跟我借錢，該借嗎", "money", "choice", [[8, 0], [15, 0], [14, 1]]],
+  ["我是不是不適合談戀愛", "love", "mind", [[9, 0], [1, 1], [20, 0]]],
+  ["", "gen", "time", [[10, 0], [16, 0], [3, 1]]]
+];
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+
+async function readOne(basis, onText) {
+  const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis }) });
+  if (!res.ok || !res.body) { let e = ""; try { e = (await res.json()).error; } catch (_) {} throw new Error(e || "http " + res.status); }
+  const rd = res.body.getReader(), dec = new TextDecoder(); let buf = "", txt = "";
+  for (;;) {
+    const { done, value } = await rd.read(); if (done) break;
+    buf += dec.decode(value, { stream: true }); const lines = buf.split("\n"); buf = lines.pop();
+    for (const l of lines) { const m = l.match(/^data:\s*(.*)$/); if (!m || m[1] === "[DONE]") continue; try { const d = JSON.parse(m[1]).choices?.[0]?.delta?.content; if (d) { txt += d; onText(txt); } } catch (_) {} }
+  }
+  return txt;
+}
+
+document.getElementById("go").onclick = async e => {
+  e.target.disabled = true;
+  const out = document.getElementById("out"); out.innerHTML = "";
+  for (const [k, [q, topic, spread, picks]] of CASES.entries()) {
+    const R = buildReading({ question: q, topicSel: topic, spread, picked: picks.map(([i, r]) => ({ i, rev: !!r })), seed: 7 + k });
+    const box = document.createElement("div"); box.className = "case";
+    box.innerHTML = `<h2>${k + 1}. ${esc(q || "（沒寫問題）")}</h2><div class="meta">${esc(R.topic.label)}・${esc(R.spread.positions.join("／"))}：${R.cards.map(c => esc(c.position + " " + c.name + c.orientation)).join("、")}｜傾向：${esc(R.verdict.text)}${R.comparison ? "｜較有利：" + esc(R.comparison.favored) : ""}</div><pre>等候女祭司……</pre>`;
+    out.appendChild(box);
+    const pre = box.querySelector("pre");
+    const show = t => { const m = t.match(/^\s*(〔底稿[^〕]*〕?)([\s\S]*)$/); pre.innerHTML = m ? `<span class="draft">${esc(m[1])}</span>${esc(m[2])}` : esc(t); };
+    try { show(await readOne(aiBasis(R), show)); } catch (err) { pre.innerHTML = `<span class="err">失敗：${esc(err.message)}</span>`; }
+  }
+  e.target.disabled = false;
+};
+</script>
+</body>
+</html>

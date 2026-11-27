@@ -5,7 +5,20 @@
 // - GET /quota：回報今日剩餘次數，網站據此決定這一回用 AI 還是古法
 // - DeepSeek 的 SSE 串流原樣轉回網站（OpenAI 相容格式，網站讀 choices[0].delta.content）
 // - 金鑰放在 Worker 的 secret：DEEPSEEK_API_KEY（本機測試用 worker/.dev.vars，不進 git）
-import { oracleMessages } from "../../js/oracle-prompt.js";
+import { oracleMessages, PROMPT_PATH } from "../../js/oracle-prompt.js";
+import BUNDLED_SYSTEM from "../../ai/oracle-system.txt"; // 打包時以文字匯入（esbuild --loader:.txt=text；wrangler.toml 的 rules）
+
+// 系統提示：每 5 分鐘到網站抓一次 ai/oracle-system.txt，改提示詞只要推上 GitHub；抓不到就用打包的那份
+let sys = { t: 0, text: "" };
+async function systemPrompt(env) {
+  if (sys.text && Date.now() - sys.t < 300e3) return sys.text;
+  try {
+    const r = await fetch(new URL(PROMPT_PATH, env.SITE_URL || "https://dhoper.github.io/delphi-oracle/").href, { cf: { cacheTtl: 300 } });
+    const t = r.ok ? await r.text() : "";
+    if (t.length > 800 && t.includes("皮媞亞")) sys = { t: Date.now(), text: t };
+  } catch (_) {}
+  return sys.text || BUNDLED_SYSTEM;
+}
 import { handleShare } from "./share.js";
 
 const MAX_BASIS = 9000; // 解讀依據 JSON 的長度上限（三張牌的依據約 2–3 千字）
@@ -63,6 +76,7 @@ export default {
     const qmax = +env.QUESTION_MAX || 60;
     if (typeof basis.問題 === "string") basis.問題 = basis.問題.replace(/\s+/g, " ").trim().slice(0, qmax);
 
+    delete basis.說法提醒; // 網站過渡期附的規則摘要；新版 Worker 直接讀完整提示詞，不需要
     // 每日上限：先檢查再記一次
     const q = await quota(req, env);
     if (q.site <= 0) return json({ error: "quota_site", perSite: q.ls }, 429, h);
@@ -73,11 +87,11 @@ export default {
       headers: { Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: env.MODEL || "deepseek-flash",
-        messages: oracleMessages(basis),
+        messages: oracleMessages(basis, await systemPrompt(env)),
         stream: true,
         thinking: { type: "disabled" }, // 不先「思考」：直接串流正文，求問者不必乾等
         max_tokens: 1600,
-        temperature: 1.0
+        temperature: 0.8
       })
     });
     if (!upstream.ok || !upstream.body) {

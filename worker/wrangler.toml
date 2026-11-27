@@ -2,6 +2,12 @@ name = "delphi-oracle-ai"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
+# 提示詞 ai/oracle-system.txt 以文字模組打包
+[[rules]]
+type = "Text"
+globs = ["**/*.txt"]
+fallthrough = true
+
 [vars]
 # 允許呼叫的網站來源（逗號分隔）；localhost 一律放行，方便本機測試
 ALLOWED_ORIGINS = "https://dhoper.github.io"

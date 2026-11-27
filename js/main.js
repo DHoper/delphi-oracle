@@ -676,17 +676,25 @@ function paintVoice(text, done) {
   const { omen, items } = parseOracle(text), om = $("omenLine");
   om.hidden = !omen; if (om.textContent !== omen) om.textContent = omen;
   const R = S.R, used = new Set([...box.querySelectorAll(".sec-card [data-card]")].map(b => +b.dataset.card));
+  // 小標 → 牌位：先比對牌位名；抉擇牌陣的女祭司會用求問者的說法稱呼兩條路（「不去的路」「去的路」），
+  // 比對不到時依出現順序對應到第一、第二個選擇（神示仍以名稱比對）
+  const headCard = [], taken = new Set();
+  items.forEach((x, i) => { const k = R && x.h ? cardForHeading(R, x.h) : -1; headCard[i] = k; if (k >= 0) taken.add(k); });
+  if (R && R.spread.id === "choice") items.forEach((x, i) => {
+    if (!x.h || headCard[i] >= 0) return;
+    const k = [0, 1].find(n => !taken.has(n)); if (k != null) { headCard[i] = k; taken.add(k); }
+  });
   items.forEach((x, i) => {
     let sec = box.children[i];
     if (!sec) { sec = document.createElement("section"); sec.className = "rise"; sec.innerHTML = "<h4></h4><p></p>"; box.appendChild(sec); }
     const h = sec.querySelector("h4"), p = sec.querySelector("p"), html = richHTML(x.t);
     // 牌位小標旁補一行白話（例如「左徑」旁寫「第一個選擇」）
-    const hk = R && R.cards.length > 1 ? cardForHeading(R, x.h) : -1, hh = esc(x.h) + (hk >= 0 && plainOf(R, hk) && !x.h.includes(plainOf(R, hk)) ? `<small>${esc(plainOf(R, hk))}</small>` : "");
+    const hk = R && R.cards.length > 1 ? headCard[i] : -1, hh = esc(x.h) + (hk >= 0 && plainOf(R, hk) && !x.h.includes(plainOf(R, hk)) ? `<small>${esc(plainOf(R, hk))}</small>` : "");
     h.hidden = !x.h; if (h.innerHTML !== hh) h.innerHTML = hh;
     if (p.innerHTML !== html) p.innerHTML = html;
     // 小標一出現就把那張牌放進這一段（小標串流到一半時先不放）
     if (R && x.h && !sec.querySelector(".sec-card") && (x.t || done)) {
-      const k = cardForHeading(R, x.h);
+      const k = headCard[i];
       if (k >= 0 && !used.has(k)) { used.add(k); sec.classList.add("has-card"); sec.insertAdjacentHTML("afterbegin", figHTML(R, k, box.querySelectorAll(".sec-card").length % 2 ? "right" : "left")); }
     }
   });

@@ -398,6 +398,18 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
     line: () => viaApp(url => `https://line.me/R/share?text=${encodeURIComponent(text() + url)}`),
     facebook: () => viaApp(url => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`),
     threads: () => viaApp(url => `https://www.threads.net/intent/post?text=${encodeURIComponent(text() + url)}`),
+    // Instagram 沒有網頁分享連結：先複製神諭連結（供限動「連結」貼紙貼上），再把 9:16 圖卡交給系統分享，由使用者選 Instagram
+    instagram: () => busy(async () => {
+      const url = await getLink(); const copied = await copy(text() + url);
+      const sb = await storyBlob(); const f = sb && new File([sb], "oracle-tarot-story.jpg", { type: "image/jpeg" });
+      if (f && canShareFiles(f)) {
+        try { await navigator.share({ files: [f] }); say(copied ? "連結已複製，可在限動貼上連結貼紙" : "已開啟分享"); }
+        catch (e) { if (e && e.name !== "AbortError") say("無法開啟分享"); }
+        return;
+      }
+      const a = document.createElement("a"); a.href = URL.createObjectURL(sb); a.download = "oracle-tarot-story.jpg"; document.body.appendChild(a); a.click(); a.remove();
+      say(copied ? "已存下限動圖卡並複製連結，請到 Instagram 上傳" : "已存下限動圖卡，請到 Instagram 上傳");
+    }),
     link: () => busy(async () => say((await copy(text() + (await getLink()))) ? "已複製神諭與連結" : "無法複製"))
   };
   // 部分瀏覽器擋非同步開窗：先預備好短連結
@@ -405,6 +417,9 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
     const b = e.target.closest("[data-act]"); if (b) { actions[b.dataset.act](); return; }
     if (e.target.closest("[data-close]") || e.target === sheet) close();
   });
+  // 限動版圖卡預先畫好：系統分享必須在點擊後短時間內呼叫，不能等現場繪製
+  let story = null;
+  const storyBlob = () => story || (story = renderShareCard(R, { shared, ai, question: withQ() ? question : "" }).then(cv => new Promise(r => cv.toBlob(r, "image/jpeg", 0.93))));
   async function paint() {
     img.removeAttribute("src"); sheet.classList.add("busy");
     const cv = lastCanvas = await renderLongCard(R, { shared, ai, question: withQ() ? question : "" });
@@ -412,7 +427,7 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
     if (blobURL) URL.revokeObjectURL(blobURL); blobURL = URL.createObjectURL(blob); img.src = blobURL;
     sheet.classList.remove("busy");
   }
-  if (qChk) qChk.addEventListener("change", () => { paint(); getLink(); });
+  if (qChk) qChk.addEventListener("change", () => { story = null; paint(); getLink(); storyBlob(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !sheet.hidden) close(); });
   function close() { sheet.classList.remove("open"); setTimeout(() => (sheet.hidden = true), 350); }
   return {
@@ -422,7 +437,7 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
       const { omen } = splitOracle(ai);
       pv.innerHTML = `<b>「${esc(omen || R.verdict.text)}」</b><span>${esc(excerpt(R, ai, 70))}</span>`;
       sheet.hidden = false; requestAnimationFrame(() => sheet.classList.add("open")); status.textContent = "";
-      await paint(); getLink();
+      story = null; await paint(); getLink(); storyBlob();
       // 主按鈕是「分享連結」（連結優先，會帶出圖卡）；手機另有「分享長圖」；電腦上顯示「複製長圖」
       sheet.querySelector('[data-act="native"]').hidden = !navigator.share;
       sheet.querySelector('[data-act="shareimg"]').hidden = !canFiles();

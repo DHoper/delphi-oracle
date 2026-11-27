@@ -989,3 +989,16 @@ details.deep.lead summary{display:none}
 .stage.tremor{animation:tremor .42s linear}
 @keyframes tremor{15%{translate:-3px 1px}30%{translate:3px -1px}45%{translate:-2px -2px}60%{translate:2px 1px}75%{translate:-1px 0}}
 @media (prefers-reduced-motion:reduce){.stage.tremor{animation:none}.utter.speech span.cry{animation-name:glyph}}
+
+/* 11-27 分享面板：防破版（系統字級放大、窄螢幕）。主按鈕一列，其餘兩欄等寬；字級隨按鈕寬度縮放，不換行不溢出 */
+.share-acts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;container-type:inline-size}
+.share-acts button,.share-acts [data-act=save],.share-acts [data-act=link]{grid-column:auto;min-width:0;overflow:hidden;text-overflow:clip;padding:8px 4px;font-size:clamp(11px,4.6cqi,15px);letter-spacing:.06em}
+.share-acts .b-main{font-size:clamp(14px,5.4cqi,18px);letter-spacing:.3em;text-indent:.3em}
+.share-tip{text-wrap:pretty;max-width:34em;line-height:1.6}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* 11-27 解讀紙卷：文字捲到上方卷軸底下時淡出，不從卷軸兩側的鏤空處露出來 */
+.scroll-in{-webkit-mask-image:linear-gradient(to bottom,transparent 0,transparent 30px,#000 62px);mask-image:linear-gradient(to bottom,transparent 0,transparent 30px,#000 62px)}
+.share-acts [data-act=link]{grid-column:1/-1;order:9}
+.share-acts .share-story{order:10}
+.share-acts:has([data-act=shareimg][hidden]) [data-act=save]{grid-column:1/-1}

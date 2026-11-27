@@ -220,12 +220,12 @@ function focusOmen(b) {
   if (focusedOmen && focusedOmen !== b) unfocusOmen(true);
   focusedOmen = b; const p = focusPos();
   b.style.setProperty("--x", p.x + "px"); b.style.setProperty("--y", p.y + "px");
-  posAnim(); b.classList.add("focused"); $("omens").classList.add("focusing"); audio.rustle();
+  posAnim(); b.classList.add("focused"); $("omens").classList.add("focusing"); audio.rustle(); fire.set({ power: 2.2 });
   whisper(WHISPER[b.dataset.t] + "\n再點一下，或往下撥進火中");
 }
 function unfocusOmen(quiet = false) {
   if (!focusedOmen) return; const b = focusedOmen; focusedOmen = null;
-  posAnim(); b.classList.remove("focused"); $("omens").classList.remove("focusing");
+  posAnim(); b.classList.remove("focused"); $("omens").classList.remove("focusing"); if (step === 1) fire.set({ power: 1.4 });
   if (b.dataset.bx) { b.style.setProperty("--x", b.dataset.bx); b.style.setProperty("--y", b.dataset.by); }
   if (!quiet) $("whisper").classList.add("out");
 }

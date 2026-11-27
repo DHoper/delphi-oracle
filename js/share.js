@@ -107,7 +107,8 @@ function byComma(ctx, text, maxW, sp) {
 // parseOracle → { omen, items: [{ h: 小標或"", t: 含 ** 標記的段落 }] }
 const HEAD = /^[#\s]*[【\[]([^】\]]{1,8})[】\]]\s*[:：]?\s*/;
 export function parseOracle(text) {
-  const blocks = String(text || "").replace(/\r/g, "").replace(/__/g, "**").replace(/\s*——\s*|\s*—\s*/g, "，").replace(/，，/g, "，").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  // 模型偶爾自己加的「讖語：」「籤語：」標籤與 --- 分隔線，一律拿掉
+  const blocks = String(text || "").replace(/\r/g, "").replace(/^\s*-{3,}\s*$/gm, "").replace(/^(\s*)(讖語|籤語|神諭)\s*[:：]\s*/gm, "$1").replace(/__/g, "**").replace(/\s*——\s*|\s*—\s*/g, "，").replace(/，，/g, "，").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
   let omen = "";
   if (blocks.length && !HEAD.test(blocks[0]) && !blocks[0].includes("\n") && blocks[0].replace(/\*\*/g, "").length <= 34) omen = blocks.shift().replace(/\*\*/g, "").replace(/^#+\s*/, "");
   const items = [];

@@ -5,6 +5,10 @@ export function createAudio() {
     if (ac) return;
     ac = new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
+    // 切到別的 App、鎖螢幕或換分頁時整個靜音（暫停音訊），回來再接著響
+    const pause = () => { if (ac.state === "running") ac.suspend(); };
+    document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); else if (on) ac.resume(); });
+    addEventListener("pagehide", pause);
     // 殿內的底聲：極低的地鳴（兩個正弦）＋一層很輕、經低通濾過的褐噪音（像殿內的氣流，不是白噪音的嘶嘶聲），音量緩緩起伏
     const drone = ac.createOscillator(), dg = ac.createGain(); drone.type = "sine"; drone.frequency.value = 55; dg.gain.value = 0.035;
     const drone2 = ac.createOscillator(); drone2.type = "sine"; drone2.frequency.value = 82.4; const dg2 = ac.createGain(); dg2.gain.value = 0.016;

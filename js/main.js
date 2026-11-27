@@ -891,6 +891,18 @@ stage.addEventListener("scroll", () => { if (stage.scrollTop || stage.scrollLeft
 layout(); applyAtmosphere();
 requestAnimationFrame(loop);
 (CONFIG.EXT_DATA ? loadExtData() : Promise.resolve()).then(() => { if (S.R) S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed }); });
+// 流量統計：設定裡填了才載入（不用 cookie）
+(function loadAnalytics() {
+  if (/^(localhost|127\.|\[::1\])/.test(location.hostname)) return; // 本機測試不計
+  if (CONFIG.CF_ANALYTICS_TOKEN) {
+    const sc = document.createElement("script"); sc.defer = true; sc.src = "https://static.cloudflareinsights.com/beacon.min.js";
+    sc.setAttribute("data-cf-beacon", JSON.stringify({ token: CONFIG.CF_ANALYTICS_TOKEN })); document.head.appendChild(sc);
+  }
+  if (CONFIG.GOATCOUNTER) {
+    const sc = document.createElement("script"); sc.async = true; sc.src = "https://gc.zgo.at/count.js";
+    sc.setAttribute("data-goatcounter", `https://${CONFIG.GOATCOUNTER}.goatcounter.com/count`); document.head.appendChild(sc);
+  }
+})();
 window.__delphi = { S, flip, drawCard, again, offer, sealFx, chooseSpread, dropOmen, showStep, rowCards, smoke }; // 測試用
 
 // ---------------- 進入畫面：山巒上的神殿 → 撥開帷幕 → 內殿見證異相 ----------------

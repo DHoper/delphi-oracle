@@ -11,5 +11,10 @@ export const CONFIG = {
   // 牌組只用 22 張大阿爾克那（偉特正規牌組是 78 張；需求方決定排除小牌）。設為 false 恢復 78 張
   MAJOR_ONLY: true,
   // 擴充牌義資料（data/frames.json、data/major/NN.json）；有放檔案時才設為 true，免得每次載入都多出幾十個 404 請求
-  EXT_DATA: false
+  EXT_DATA: false,
+  // 流量統計（填了才會載入；兩個可擇一或都填）
+  // Cloudflare Web Analytics：Cloudflare 後台 → Web Analytics → 新增網站 dhoper.github.io → 複製 script 裡的 token
+  CF_ANALYTICS_TOKEN: "",
+  // GoatCounter：到 goatcounter.com 註冊後的代號（例如 delphi-oracle，即 https://delphi-oracle.goatcounter.com）
+  GOATCOUNTER: ""
 };

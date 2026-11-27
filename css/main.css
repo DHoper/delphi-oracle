@@ -1002,3 +1002,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .share-acts [data-act=link]{grid-column:1/-1;order:9}
 .share-acts .share-story{order:10}
 .share-acts:has([data-act=shareimg][hidden]) [data-act=save]{grid-column:1/-1}
+
+/* 取預兆：浮到火上的那一枚輕輕往火裡點頭，火盆口一圈光暈，提示「往下投」 */
+.rite .omens button.focused i{animation:omenNod 1.4s ease-in-out infinite;box-shadow:0 0 0 1px rgba(243,212,139,.9),0 0 30px rgba(255,170,70,.85)}
+@keyframes omenNod{0%,100%{transform:translateY(0) scale(1.42)}50%{transform:translateY(14px) scale(1.42)}}
+.rite .omens button.focused::after{content:"";position:absolute;left:50%;top:calc(100% + 26px);width:22px;height:22px;margin-left:-11px;border-right:3px solid #ffe3a3;border-bottom:3px solid #ffe3a3;transform:rotate(45deg);filter:drop-shadow(0 0 6px rgba(255,190,90,.95)) drop-shadow(0 0 2px #000);animation:omenArrow 1.4s ease-in-out infinite;pointer-events:none}
+@keyframes omenArrow{0%,100%{opacity:.25;translate:0 0}50%{opacity:1;translate:0 10px}}
+@media (prefers-reduced-motion:reduce){.rite .omens button.focused i,.rite .omens button.focused::after{animation:none}}

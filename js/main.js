@@ -118,7 +118,7 @@ const LAYS = {
   mind: { name: "身・心・靈", cards: [[50, 30, 0, "靈"], [28, 72, 0, "身"], [72, 72, 0, "心"]] }
 };
 // 求問三步：0 叩問（道出所問）　1 自火中取預兆　2 命運三女神垂目（擇牌陣）＋封印
-const CAPS = ["你想問什麼", "自火中取一預兆", "命運三女神將看向何處"]; // 擇牌陣選定之後改由 gazeCap() 說出落點
+const CAPS = ["你想問什麼", "點一枚預兆，投進火中", "命運三女神將看向何處"]; // 擇牌陣選定之後改由 gazeCap() 說出落點
 const gazeCap = () => `命運三女神看向你的${SPREADS[S.spread].gaze}`;
 const askEl = $("ask");
 let step = 0;
@@ -155,6 +155,7 @@ function showStep(n) {
   $("omens").classList.remove("chosen");
   requestAnimationFrame(() => { fire.resize(); fire.set({ power: n === 1 ? 1.4 : 1 }); });
   if (n === 2) { $("whisper").classList.add("out"); showSigils(); }
+  if (n === 1 && !S.omIntro) { S.omIntro = true; setTimeout(() => { if (step === 1 && !focusedOmen) whisper("火裡升起六枚預兆\n點一枚，再把它投進火中"); }, D(1100)); }
   if (n === 1) { audio.hiss(); requestAnimationFrame(layoutOmens); [...$("omens").children].forEach(b => { b.style.transform = ""; b.style.visibility = ""; b.style.opacity = ""; b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; b.classList.remove("held", "touched"); }); }
 }
 $("steps").addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.disabled) return; if (+b.dataset.go > 0 && [...$("question").value.replace(/\s+/g, "")].length < 2) { showStep(0); askGo(); return; } showStep(+b.dataset.go); });
@@ -171,16 +172,19 @@ function whisper(text) {
   whisperT = setTimeout(() => w.classList.add("out"), D(text.length * 55 + 2200));
 }
 // 取預兆：點一下，深處低語說出它的意思；把它拖進火盆的盆口放開，木徽章落入火中燃起，就是取了這個預兆
-function mouthRect() { const r = $("brazier").getBoundingClientRect(); return { l: r.left - r.width * 0.1, r: r.right + r.width * 0.1, t: r.top - Math.max(90, r.width * 0.45), b: r.bottom + Math.max(30, r.height), cx: r.left + r.width / 2, cy: r.top + r.height * 0.4 }; }
+// 火盆的判定範圍刻意放大：左右外擴、上緣到徽章下方、下緣到畫面底，手機上放開時大致在火的方向就算數
+function mouthRect() { const r = $("brazier").getBoundingClientRect(), hw = Math.max(r.width * 0.85, 150); return { l: r.left + r.width / 2 - hw, r: r.left + r.width / 2 + hw, t: r.top - Math.max(140, r.width * 0.75), b: innerHeight, cx: r.left + r.width / 2, cy: r.top + r.height * 0.4 }; }
 const overMouth = (x, y) => { const m = mouthRect(); return x > m.l && x < m.r && y > m.t && y < m.b; };
+// 往火的方向撥一下也算：放開前往下移動得夠快、夠遠
+const flung = o => { const n = o.trail.length; if (n < 2) return false; const a = o.trail[Math.max(0, n - 5)], z = o.trail[n - 1], dt = Math.max(16, z.t - a.t), vy = (z.y - a.y) / dt; return vy > 0.45 && z.y - o.y > 36; };
 let om = null;
 $("omens").addEventListener("pointerdown", e => {
   const b = e.target.closest("button"); if (!b || S.busy || step !== 1) return;
   e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) {}
-  om = { b, x: e.clientX, y: e.clientY, drag: false };
+  om = { b, x: e.clientX, y: e.clientY, drag: false, trail: [{ y: e.clientY, t: e.timeStamp }] };
 });
 $("omens").addEventListener("pointermove", e => {
-  if (!om) return; const dx = e.clientX - om.x, dy = e.clientY - om.y;
+  if (!om) return; const dx = e.clientX - om.x, dy = e.clientY - om.y; om.trail.push({ y: e.clientY, t: e.timeStamp }); if (om.trail.length > 8) om.trail.shift();
   if (!om.drag && Math.hypot(dx, dy) > 8) { om.drag = true; om.b.classList.add("held"); audio.rustle(); }
   if (om.drag) {
     om.b.style.transform = `translate(calc(var(--x) - 50% + ${dx}px),calc(var(--y) - 50% + ${dy}px))`;
@@ -201,9 +205,10 @@ async function dropOmen(b) {
   await wait(1500); fire.set({ power: 1 }); S.busy = false; showStep(2);
 }
 function endOm(e) {
-  if (!om) return; const { b, drag } = om; om = null;
-  if (!drag) { if (focusedOmen !== b) focusOmen(b); else whisper(WHISPER[b.dataset.t] + "\n拖進火中，就取了這枚預兆"); return; }
-  if (e && e.type === "pointerup" && overMouth(e.clientX, e.clientY)) return dropOmen(b);
+  if (!om) return; const o = om, { b, drag } = o; om = null;
+  // 點一下：浮到火上；再點一下：投進火中
+  if (!drag) { if (focusedOmen !== b) focusOmen(b); else dropOmen(b); return; }
+  if (e && e.type === "pointerup" && (overMouth(e.clientX, e.clientY) || flung(o))) return dropOmen(b);
   b.classList.remove("held"); askEl.classList.remove("hot"); fire.set({ power: 1.4 });
   b.animate([{ transform: b.style.transform }, { transform: "translate(calc(var(--x) - 50%),calc(var(--y) - 50%))" }], { duration: D(380), easing: "cubic-bezier(.3,.7,.2,1)" }); b.style.transform = "";
 }
@@ -216,7 +221,7 @@ function focusOmen(b) {
   focusedOmen = b; const p = focusPos();
   b.style.setProperty("--x", p.x + "px"); b.style.setProperty("--y", p.y + "px");
   posAnim(); b.classList.add("focused"); $("omens").classList.add("focusing"); audio.rustle();
-  whisper(WHISPER[b.dataset.t] + "\n拖進火中，就取了這枚預兆");
+  whisper(WHISPER[b.dataset.t] + "\n再點一下，或往下撥進火中");
 }
 function unfocusOmen(quiet = false) {
   if (!focusedOmen) return; const b = focusedOmen; focusedOmen = null;

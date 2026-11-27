@@ -941,3 +941,39 @@ details.deep.lead summary{display:none}
 .askq #askGo{transition:filter .3s,opacity .3s}
 .askq #askGo:not(.ready){filter:saturate(.5) brightness(.8);opacity:.8}
 @media (min-aspect-ratio:11/10){.stage[data-phase=ask][data-askstep="2"] #stepCap{opacity:0}.spread-info{gap:4px}.si-hint{display:none}}
+
+/* ================= 揭牌時女祭司的話（11-27） ================= */
+/* 比降下的神諭小，像說話：前半是開場與第一眼，後半（收尾）淡一些；新的話會蓋掉舊的 */
+.utter.speech{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#ecdfc2;filter:drop-shadow(0 2px 5px rgba(0,0,0,.95));font:500 clamp(15px,4.1vw,19px)/1.75 var(--f-body);letter-spacing:.05em;max-width:34em;margin:0 auto;text-wrap:pretty}
+.utter.speech span{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:inherit}
+.utter.speech .sp-main{display:block}
+.utter.speech .sp-tail{display:block;margin-top:.35em;color:var(--gold2);font-family:var(--f-disp);font-weight:600;letter-spacing:.08em}
+.utter.speech::before{width:min(120%,620px);height:calc(100% + 48px)}
+.utter.fade{opacity:0;transition:opacity .45s}
+/* 解讀時舞台上不留牌與牌位（紙卷內已有），巨蟒的臉露出來 */
+.stage[data-phase=read] .table{opacity:0;pointer-events:none;transition:opacity .6s}
+.stage[data-phase=read] .cards .card{pointer-events:none}
+
+/* ================= 紙卷：牌穿插在各段（11-27） ================= */
+/* 牌浮在段落一側，文字繞著牌走；左右交錯，略微傾斜，像擺在紙上的牌 */
+.oracle-text section.has-card,.story p.has-card{display:flow-root}
+.sec-card{width:clamp(78px,29%,128px);margin:.35em 0 .6em;text-align:center}
+.sec-card.left{float:left;margin-right:1.05em}
+.sec-card.right{float:right;margin-left:1.05em}
+.sc-face{display:block;width:100%;aspect-ratio:3/5;padding:0;border:0;border-radius:5px;overflow:hidden;background:#000;cursor:zoom-in;
+  box-shadow:0 0 0 1px rgba(217,172,85,.55),0 0 0 4px rgba(10,7,4,.9),0 0 0 5px rgba(217,172,85,.25),0 10px 22px rgba(0,0,0,.75);transition:transform .35s ease,box-shadow .35s}
+.sec-card.left .sc-face{transform:rotate(-2.2deg)}
+.sec-card.right .sc-face{transform:rotate(2.2deg)}
+.sc-face:hover,.sc-face:focus-visible{outline:0;transform:rotate(0) translateY(-3px);box-shadow:0 0 0 1px var(--gold2),0 0 0 4px rgba(10,7,4,.9),0 0 0 5px rgba(243,212,139,.4),0 0 22px rgba(243,212,139,.35)}
+.sc-face svg{display:block;width:100%;height:100%}
+.sec-card figcaption{display:grid;gap:1px;margin-top:.55em;line-height:1.25}
+.sec-card figcaption small{font:600 10.5px/1.3 var(--f-disp);letter-spacing:.32em;text-indent:.32em;color:var(--goldd)}
+.sec-card figcaption b{font:700 14px/1.3 var(--f-disp);letter-spacing:.08em;color:var(--gold2)}
+.sec-card figcaption em{font:500 11px/1.3 var(--f-body);font-style:normal;letter-spacing:.2em;text-indent:.2em;color:var(--mute)}
+.oracle-text section.has-card h4{margin-top:.15em}
+.oracle-text section.has-card.rise .sec-card{animation:cardIn .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}}
+.story p.has-card{margin-top:.6em}
+/* 牌位名稱旁的白話小字 */
+.slot .lab small{display:block;margin-top:1px;font:500 10.5px/1.25 var(--f-body);letter-spacing:.08em;color:rgba(184,165,130,.8);white-space:nowrap}
+.oracle-text h4 small{margin-left:.7em;font:500 12px/1 var(--f-body);letter-spacing:.12em;color:var(--mute)}

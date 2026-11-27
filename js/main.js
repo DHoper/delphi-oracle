@@ -12,6 +12,7 @@ import { createSeal } from "./scene/seal.js";
 import { aiAvailable, aiReading, aiQuota, fetchQuota } from "./ai.js";
 import { MYTH } from "./tarot/myth.js";
 import { EPIC } from "./tarot/epic.js";
+import { revealLine, glimpses } from "./tarot/reveal.js";
 import { encodeReading, decodeReading, createShareSheet, splitOracle, parseOracle } from "./share.js";
 import { createGate, gateImages } from "./scene/gate.js";
 
@@ -61,7 +62,7 @@ function layout() {
     Object.assign(bz.style, { width: bw + "px", height: bh + "px", left: sx + sw * 0.5 - (base.left - st.left) + "px", top: Y(SC.table + (wide ? 2.3 : 1.7)) - bh * 0.5 - (base.top - st.top) + "px" });
   }
   // 牌位：下顎與石桌之間；牌寬受畫面寬與這段高度限制
-  const labH = 30, nmH = 44, regTop = chinY + H * 0.02, regBot = tableY + H * 0.03;
+  const labH = SPREADS[S.spread].positions.length > 1 ? 44 : 30, nmH = 44, regTop = chinY + H * 0.02, regBot = tableY + H * 0.03;
   const cardH = Math.max(90, Math.min((regBot - regTop - labH - nmH) * 0.98, H * (wide ? 0.27 : 0.25), (W * (wide ? 0.1 : 0.25)) / 0.6));
   const cardW = cardH * 0.6; css("--card-w", cardW + "px");
   const groupH = cardH + labH + nmH, slotsTop = regTop + Math.max(0, (regBot - regTop - groupH) / 2);
@@ -231,7 +232,7 @@ $("omens").addEventListener("keydown", e => { const b = e.target.closest("button
 
 // 牌陣：畫在石桌上。撫過（左右滑動或點一下）石桌換陣形；舊框熄成餘燼，新框逐一燃起
 const SP_ORDER = ["one", "time", "choice", "mind"];
-const SP_WHISPER = { one: "一牌一諭，照見當下\n按住封印，獻上所問", time: "往昔、此刻、將臨，一線相牽\n按住封印，獻上所問", choice: "左徑、右徑，與一句神示\n按住封印，獻上所問", mind: "身、心、靈，各現一牌\n按住封印，獻上所問" };
+const SP_WHISPER = { one: "一張牌，照見眼前這件事\n按住封印，獻上所問", time: "從前、現在、之後，一線相牽\n按住封印，獻上所問", choice: "先想到的選擇放左邊，另一個放右邊\n按住封印，獻上所問", mind: "身體、心情、心底，各看一張\n按住封印，獻上所問" };
 let tdown = null;
 // 命運女神的目光：金色光暈落在石桌上，光落之處即是牌位。換落點時，光從舊處滑向新處（一分為三，或三合為一）
 const gazeEl = $("gaze");
@@ -254,14 +255,14 @@ const SIGILS = [["one", "此刻"], ["time", "因果"], ["choice", "抉擇"], ["m
 const sigilsEl = $("sigils");
 sigilsEl.innerHTML = SIGILS.map(([id, nm], i) => `<button type="button" role="radio" aria-checked="false" data-sp="${id}" aria-label="${nm}"><i style="background-image:url(assets/spreads/${id}.webp)"></i><b>${nm}</b></button>`).join("");
 // 轉盤下方的說明：牌陣名、一句白話說明、牌位、操作提示
-const SP_DESC = { one: "抽一張牌，看清眼前這件事", time: "三張牌，看這件事的來龍去脈", choice: "兩條路各抽一張，再加一張神示", mind: "從身體、心情、內在各看一張" };
+const SP_DESC = { one: "抽一張牌，看清眼前這件事", time: "三張牌，看這件事從哪裡來、往哪裡去", choice: "心裡的兩個選擇各抽一張：先想到的在左，另一個在右；中間再抽一張提醒", mind: "從身體、心情、心底各看一張" };
 const spreadInfo = document.createElement("div"); spreadInfo.className = "spread-info"; spreadInfo.id = "spreadInfo"; spreadInfo.setAttribute("aria-live", "polite");
 spreadInfo.innerHTML = `<b class="si-name"></b><span class="si-desc"></span><span class="si-pos"></span><span class="si-hint">左右滑動換牌陣　按住正中的星徽，獻上所問</span>`;
 sigilsEl.after(spreadInfo);
 function paintSpreadInfo(sp) {
   spreadInfo.querySelector(".si-name").textContent = SIGILS.find(x => x[0] === sp)[1];
   spreadInfo.querySelector(".si-desc").textContent = SP_DESC[sp];
-  spreadInfo.querySelector(".si-pos").textContent = SPREADS[sp].positions.length > 1 ? SPREADS[sp].positions.join("　·　") : "";
+  spreadInfo.querySelector(".si-pos").textContent = SPREADS[sp].positions.length > 1 ? SPREADS[sp].positions.map((p, k) => `${p}・${SPREADS[sp].plain[k]}`).join("　") : "";
   spreadInfo.classList.remove("swap"); void spreadInfo.offsetWidth; spreadInfo.classList.add("swap");
 }
 // 每枚星徽依它與正中的距離（0 正中、±1 兩側、2 後方）擺位；正中那枚在停穩後由封印接手
@@ -328,7 +329,7 @@ async function offer() {
 
 function renderSlots(ignite = false) {
   const pos = SPREADS[S.spread].positions; slotsEl.dataset.sp = S.spread;
-  slotsEl.innerHTML = pos.map((p, k) => `<div class="slot${ignite ? " ignite" : ""}" data-k="${k}" style="--d:${D(k * 220)}ms"><div class="hole" style="--slot:url('${new URL(`assets/slots/${S.spread}-${k}.webp`, location.href).href}')"></div><div class="lab">${p}</div><div class="nm"></div></div>`).join("");
+  slotsEl.innerHTML = pos.map((p, k) => `<div class="slot${ignite ? " ignite" : ""}" data-k="${k}" style="--d:${D(k * 220)}ms"><div class="hole" style="--slot:url('${new URL(`assets/slots/${S.spread}-${k}.webp`, location.href).href}')"></div><div class="lab">${p}${SPREADS[S.spread].plain && pos.length > 1 ? `<small>${SPREADS[S.spread].plain[k]}</small>` : ""}</div><div class="nm"></div></div>`).join("");
   if (ignite) setTimeout(() => { const sr = stage.getBoundingClientRect(); slotsEl.querySelectorAll(".hole").forEach((h, k) => setTimeout(() => { const r = h.getBoundingClientRect(); fire.burst(r.left - sr.left + r.width / 2, r.top - sr.top + r.height, 14, { up: 1.1, spread: 1.2, w: r.width }); }, D(k * 220))); }, 30);
   layout();
 }
@@ -484,6 +485,10 @@ async function endDraw() {
   await tween(650, p => rest.forEach(c => { put(c, c.fx + (tc.x - c.fx) * ease(p), c.fy + 60 * ease(p), c.frot * (1 - p), c.fs); c.el.style.opacity = 1 - p; }));
   rest.forEach(c => c.el.remove());
   setPhase("flip"); hands.dataset.pose = "reveal";
+  // 牌都到齊了：先算好解讀，AI 在翻牌的這段時間就開始想（翻完時多半已經開口）
+  S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed });
+  S.R.glimpses = glimpses(S.R); startAI(S.R);
+  S.flipOrder = [];
   hint.textContent = "點牌翻開，領受神諭"; $("flipAll").hidden = SPREADS[S.spread].positions.length < 2;
   S.cards.filter(c => c.picked).forEach(c => { c.el.classList.add("tappable"); c.el.onclick = () => flip(c); });
   S.busy = false;
@@ -516,25 +521,49 @@ async function flip(c, fast = false) {
     } else await tween(fast ? 700 : 1100, p => { c.face.style.setProperty("--r", `${ease(p) * 125}%`); sparks(p); });
     c.el.classList.remove("burning", "shudder"); setTimeout(() => stage.classList.remove("eye-narrow"), D(500));
   }
+  // 牌面一露出，女祭司就開口（三張未齊，不下定論）；最後一張說完才降下總的神諭
+  const order = S.flipOrder.length, prevK = order ? S.flipOrder[order - 1] : -1; S.flipOrder.push(k);
+  const total = SPREADS[S.spread].positions.length, last = order === total - 1;
+  if (!c.rev && S.R.cards[k].score >= 1) { stage.classList.add("eye-warm"); setTimeout(() => stage.classList.remove("eye-warm"), D(1600)); }
+  const spoken = speak(revealLine(S.R, k, order, prevK), { hold: last ? 1300 : 900 }); c.spoken = spoken;
   // 抬起的牌平順降回原位，再收掉動畫（直接取消會讓牌瞬間跳回，看起來像抽搐）
   await c.el.animate([{ transform: tf(20, c.s * 1.12) }, { transform: tf(0, c.s) }], { duration: D(fast ? 260 : 380), easing: "cubic-bezier(.3,.7,.2,1)", fill: "forwards" }).finished;
   c.el.getAnimations().forEach(a => a.cancel()); put(c, c.x, c.y, 0, c.s); c.el.style.zIndex = 50 + k;
   const slot = slotsEl.children[k]; slot.querySelector(".nm").innerHTML = `${esc(CARDS[c.i][0])}<small>${c.rev ? "逆位" : "正位"}</small>`; slot.classList.add("named");
   S.flipped++;
-  if (S.flipped === SPREADS[S.spread].positions.length) { $("flipAll").hidden = true; hint.textContent = ""; await oracle(); }
+  if (last) { $("flipAll").hidden = true; hint.textContent = ""; }
+  else hint.textContent = "翻開下一張";
+  if (last) { await spoken; await oracle(); }
+  return spoken;
 }
-$("flipAll").addEventListener("click", async () => { $("flipAll").hidden = true; for (const c of S.cards.filter(c => c.picked && !c.flipped)) { flip(c, true); await wait(450); } });
+// 全部翻開：一張一張來，每張都等女祭司把話說完
+$("flipAll").addEventListener("click", async () => {
+  $("flipAll").hidden = true;
+  for (const c of S.cards.filter(c => c.picked)) { if (S.phase !== "flip") break; if (!c.flipped) await flip(c, true); else if (c.spoken) await c.spoken; }
+});
 
 // ---------------- 神諭：蛇眼亮起、逐字顯現 ----------------
+let speakToken = 0;
 function utter(text, ms = 70) {
+  speakToken++; utterEl.classList.remove("speech");
   utterEl.innerHTML = [...text].map((ch, i) => `<span style="animation-delay:${D(i * ms)}ms">${esc(ch)}</span>`).join("");
   return wait(text.length * ms + 700);
 }
+// 揭牌時的話：比神諭小、像說話；新的話會蓋掉還沒說完的舊話
+function speak({ text, tail }, { ms = 42, hold = 900 } = {}) {
+  const my = ++speakToken, chars = [...text], tch = [...(tail || "")];
+  const span = (arr, off) => arr.map((ch, i) => `<span style="animation-delay:${D((off + i) * ms)}ms">${esc(ch)}</span>`).join("");
+  utterEl.classList.add("speech");
+  utterEl.innerHTML = `<span class="sp-main">${span(chars, 0)}</span>${tch.length ? `<span class="sp-tail">${span(tch, chars.length + 6)}</span>` : ""}`;
+  const T = D((chars.length + (tch.length ? tch.length + 6 : 0)) * ms + 700 + hold);
+  return new Promise(res => { const t0 = performance.now(); (function f() { if (speakToken !== my || performance.now() - t0 >= T) return res(); setTimeout(f, 120); })(); });
+}
 async function oracle() {
   setPhase("oracle");
-  S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed });
-  save(); startAI(S.R);
-  await wait(400);
+  if (!S.R) { S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed }); S.R.glimpses = glimpses(S.R); startAI(S.R); }
+  save();
+  utterEl.classList.add("fade"); await wait(500); utter(""); utterEl.classList.remove("fade");
+  await wait(200);
   stage.classList.add("eye-flare"); audio.chime(); serpent.setSpeed(110); if (temple) temple.sway(0.25); smoke.burst([0.5, 0.3], 1); hands.dataset.pose = "offer";
   await wait(800); await utter(S.R.verdict.text); await wait(900);
   stage.classList.remove("eye-flare"); serpent.setSpeed(40); if (temple) temple.sway(1);
@@ -557,16 +586,47 @@ const cleanAI = t => String(t || "").replace(/\r/g, "").replace(/\*\*|__/g, "").
 // 第一段若是一句短短的讖語，獨立成大字；其餘是正文段落
 // 段落 HTML：** 重點 ** → <mark>（串流中只出現一半的星號先不轉）
 const richHTML = t => esc(t).replace(/\*\*([^*]+?)\*\*/g, "<mark>$1</mark>").replace(/\*\*/g, "");
+// ---- 紙卷裡的牌：每張牌出現在講它的那一段，左右交錯 ----
+// 段落小標對應到牌位：因果＝往昔／此刻／將臨，抉擇＝左徑／右徑／神示，本心＝身／心／靈，此刻（單張）＝牌意
+function cardForHeading(R, h) {
+  const t = String(h || "").replace(/[【】\s]/g, "");
+  if (!t) return -1;
+  if (R.spread.id === "one") return /^(牌意|今日之諭)/.test(t) ? 0 : -1;
+  return R.cards.findIndex(c => t.startsWith(c.position));
+}
+const plainOf = (R, k) => (SPREADS[R.spread.id].plain || [])[k] || "";
+function figHTML(R, k, side) {
+  const c = R.cards[k];
+  return `<figure class="sec-card ${side}"><button type="button" class="sc-face" data-card="${k}" aria-label="看大圖：${esc(c.position)}・${esc(c.name)}${c.orientation}">${faceSVG(c.id, c.rev)}</button><figcaption>${R.cards.length > 1 ? `<small>${esc(c.position)}・${esc(plainOf(R, k))}</small>` : ""}<b>${esc(c.name)}</b><em>${c.orientation}</em></figcaption></figure>`;
+}
+// 古法細解：每張牌放在第一段只講它的段落
+function storyHTML(R, paras) {
+  const shown = new Set(); let n = 0;
+  return paras.map(p => {
+    if (p.kind === "h") return `<h3>${p.html}</h3>`;
+    let fig = "";
+    if (p.cards.length === 1 && !shown.has(p.cards[0])) { shown.add(p.cards[0]); fig = figHTML(R, p.cards[0], n++ % 2 ? "right" : "left"); }
+    return `<p class="${p.kind}${fig ? " has-card" : ""}" data-cards="${p.cards.join(",")}">${fig}${p.html}</p>`;
+  }).join("");
+}
 function paintVoice(text, done) {
   const box = $("oracleText"); if (!box) return;
   const { omen, items } = parseOracle(text), om = $("omenLine");
   om.hidden = !omen; if (om.textContent !== omen) om.textContent = omen;
+  const R = S.R, used = new Set([...box.querySelectorAll(".sec-card [data-card]")].map(b => +b.dataset.card));
   items.forEach((x, i) => {
     let sec = box.children[i];
     if (!sec) { sec = document.createElement("section"); sec.className = "rise"; sec.innerHTML = "<h4></h4><p></p>"; box.appendChild(sec); }
-    const h = sec.firstElementChild, p = sec.lastElementChild, html = richHTML(x.t);
-    h.hidden = !x.h; if (h.textContent !== x.h) h.textContent = x.h;
+    const h = sec.querySelector("h4"), p = sec.querySelector("p"), html = richHTML(x.t);
+    // 牌位小標旁補一行白話（例如「左徑」旁寫「第一個選擇」）
+    const hk = R && R.cards.length > 1 ? cardForHeading(R, x.h) : -1, hh = esc(x.h) + (hk >= 0 && plainOf(R, hk) && !x.h.includes(plainOf(R, hk)) ? `<small>${esc(plainOf(R, hk))}</small>` : "");
+    h.hidden = !x.h; if (h.innerHTML !== hh) h.innerHTML = hh;
     if (p.innerHTML !== html) p.innerHTML = html;
+    // 小標一出現就把那張牌放進這一段（小標串流到一半時先不放）
+    if (R && x.h && !sec.querySelector(".sec-card") && (x.t || done)) {
+      const k = cardForHeading(R, x.h);
+      if (k >= 0 && !used.has(k)) { used.add(k); sec.classList.add("has-card"); sec.insertAdjacentHTML("afterbegin", figHTML(R, k, box.querySelectorAll(".sec-card").length % 2 ? "right" : "left")); }
+    }
   });
   while (box.children.length > items.length) box.lastElementChild.remove();
   $("voice").classList.toggle("speaking", !done); $("voiceWait").hidden = !!text.trim();
@@ -606,23 +666,23 @@ function openReading(instant = false) {
   setPhase("read");
   const R = S.R, paras = readingParagraphs(R), useAI = !S.shared || !!S.aiText; // 朋友分享來的神諭若帶著女祭司之言，照樣呈現
   $("readingIn").innerHTML = `${S.shared ? `<p class="from">朋友傳給你的神諭</p>` : ""}<div class="verdict"><p class="q">所取預兆：${esc(R.topic.label)}　目光落於：${esc(SPREADS[R.spread.id].gaze)}</p>${R.question ? `<p class="asked">你的問題：「${esc(R.question)}」</p>` : ""}<p class="ans">${esc(R.verdict.text)}</p></div>
-<div class="cardstrip">${R.cards.map((c, k) => `<button type="button" class="cs" data-k="${k}" aria-label="看大圖：${esc(c.position)}・${esc(c.name)}${c.orientation}"><span class="cs-face">${faceSVG(c.id, c.rev)}</span>${R.cards.length > 1 ? `<small>${esc(c.position)}</small>` : ""}<b>${esc(c.name)}${c.rev ? "<em>逆</em>" : ""}</b></button>`).join("")}</div>
 ${useAI ? `<section class="voice" id="voice" aria-live="polite"><h3>女祭司之言</h3><p class="omen-line" id="omenLine" hidden></p><div class="oracle-text" id="oracleText"></div><p class="voice-wait" id="voiceWait">神氣從地縫升起，女祭司就要開口……</p><p class="voice-note" id="voiceNote"></p></section>` : ""}
 ${S.shared ? "" : `<div class="acts lead"><button type="button" class="primary" data-share>傳出這則神諭</button></div>`}
-<details class="basic deep${useAI ? "" : " lead"}" id="deep"${useAI ? "" : " open"}><summary>${useAI ? "古法細解" : "神諭細解"}</summary><p class="detail">${esc(R.verdict.detail)}</p><div class="story">${paras.map(p => p.kind === "h" ? `<h3>${p.html}</h3>` : `<p class="${p.kind}" data-cards="${p.cards.join(",")}">${p.html}</p>`).join("")}</div></details>
+<details class="basic deep${useAI ? "" : " lead"}" id="deep"${useAI ? "" : " open"}><summary>${useAI ? "古法細解" : "神諭細解"}</summary><p class="detail">${esc(R.verdict.detail)}</p><div class="story">${storyHTML(R, paras)}</div></details>
 <details class="basic"><summary>各牌本義</summary>${R.cards.map(c => `<div class="it"><h4>${esc(c.position)}・${esc(c.name)} <small style="color:var(--mute)">${c.orientation}</small></h4><div class="kw">${esc(c.keywords)}</div><p>${esc(c.rev ? CARDS[c.id][4] : CARDS[c.id][3])}</p></div>`).join("")}</details>
 <div class="acts">${S.shared ? `<button type="button" class="primary" id="again">我也要問</button><button type="button" data-share>傳出這則神諭</button>` : `<button type="button" class="primary" id="again">再叩一問</button><button type="button" data-share>傳出這則神諭</button><button type="button" id="copy">抄錄全文</button>`}</div>`;
   $("readingIn").scrollTop = 0;
   const sc = $("reading"); sc.hidden = false;
   requestAnimationFrame(() => requestAnimationFrame(() => sc.classList.add("open")));
-  followSlots(instant ? 1 : D(900));
+  // 舞台上的牌收進紙卷（紙卷裡每一段都有它的牌），讓出巨蟒的臉
+  const onStage = S.cards.filter(c => c.picked);
+  if (instant || reduced) onStage.forEach(c => (c.el.style.opacity = 0));
+  else { const from = onStage.map(c => ({ x: c.x, y: c.y, s: c.s })); tween(700, p => onStage.forEach((c, i) => { put(c, from[i].x, from[i].y + 70 * ease(p), 0, from[i].s * (1 - 0.18 * ease(p))); c.el.style.opacity = 1 - ease(p); })); }
   $("readingIn").querySelectorAll(".story p[data-cards]").forEach(p => {
     const ks = p.dataset.cards.split(",").filter(Boolean).map(Number);
     const on = v => { p.classList.toggle("hl", v); S.cards.filter(c => c.picked && ks.includes(c.slot)).forEach(c => c.el.classList.toggle("hl", v)); };
     p.addEventListener("pointerenter", () => on(true)); p.addEventListener("pointerleave", () => on(false));
   });
-  $("readingIn").querySelectorAll(".cs").forEach(b => (b.onclick = () => openCard(+b.dataset.k)));
-  S.cards.filter(c => c.picked).forEach(c => { c.el.onclick = () => openCard(c.slot); });
   $("again").onclick = again;
   $("readingIn").querySelectorAll("[data-share]").forEach(b => (b.onclick = async () => {
     const run = aiRun && aiRun.R === R ? aiRun : null;
@@ -647,6 +707,8 @@ ${S.shared ? "" : `<div class="acts lead"><button type="button" class="primary" 
     }
   }
 }
+// 紙卷裡的牌：點了看大圖（只綁一次）
+$("readingIn").addEventListener("click", e => { const b = e.target.closest("[data-card]"); if (b) openCard(+b.dataset.card); });
 function followSlots(ms) {
   const t0 = performance.now();
   (function f(now) { S.cards.filter(c => c.picked).forEach(c => { const p = slotCenter(c.slot); put(c, p.x, p.y, 0, p.s); }); if (now - t0 < ms + 60) requestAnimationFrame(f); })(t0);
@@ -706,7 +768,9 @@ function blink(double = false) {
 new MutationObserver(() => {
   if (stage.classList.contains("eye-narrow")) lid(0.85, 220); // 逆位：巨蟒瞇起眼，只剩一線金光
   else if (stage.classList.contains("eye-flare")) lid(0, 300);
-  if (temple) temple.glow(stage.classList.contains("eye-flare") ? 1 : 0, stage.classList.contains("eye-flare") ? 900 : 1600);
+  // 雙眼的光：降下神諭時全亮；揭牌翻到吉牌時微微亮起（eye-warm）
+  const flare = stage.classList.contains("eye-flare"), warm = stage.classList.contains("eye-warm");
+  if (temple) temple.glow(flare ? 1 : warm ? 0.45 : 0, flare ? 900 : warm ? 700 : 1600);
   else if (lidNow() > 0 && lidNow() < 1) lid(0, 260);
 }).observe(stage, { attributes: true, attributeFilter: ["class"] });
 const layers = [...document.querySelectorAll(".layer[data-depth]")];
@@ -756,7 +820,7 @@ stage.addEventListener("scroll", () => { if (stage.scrollTop || stage.scrollLeft
 layout(); applyAtmosphere();
 requestAnimationFrame(loop);
 (CONFIG.EXT_DATA ? loadExtData() : Promise.resolve()).then(() => { if (S.R) S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed }); });
-window.__delphi = { S, flip, drawCard, again, offer, sealFx, chooseSpread };
+window.__delphi = { S, flip, drawCard, again, offer, sealFx, chooseSpread, dropOmen, showStep, rowCards }; // 測試用
 
 // ---------------- 進入畫面：山巒上的神殿 → 撥開帷幕 → 內殿見證異相 ----------------
 // 等神殿、內殿、巨蟒與字體載好，帷幕才能撥開；第一次觸碰帷幕時開啟聲音（瀏覽器要求聲音由點擊啟動）

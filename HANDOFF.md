@@ -83,3 +83,7 @@
 - AI 人設：`AI人設.md`（完整文件）→ `js/oracle-prompt.js`（實際提示詞）；改提示詞後重新部署 Worker。
 - 每日次數限制暫時關閉：`worker/wrangler.toml` 的 `QUOTA_OFF = "1"`，恢復改 "0" 再部署。
 - 全站稱呼求問者為「你」（不再用「汝」）；叩問為必填。
+
+- 揭牌台詞：`js/tarot/reveal.js`（每張牌的第一眼 GLIMPSE、牌位開場 LEAD、反應 react）。
+- 牌位白話小字：`js/tarot/data.js` 的 `SPREADS[*].plain`。
+- AI 說話規則改了（11-27 第 72、76 項）：`js/oracle-prompt.js` 需重新部署 Worker 才會在正式站完全生效；部署前，網站送出的解讀依據已附「說法提醒」欄位補上新規則。

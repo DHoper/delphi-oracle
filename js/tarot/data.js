@@ -30,10 +30,11 @@ export const ROMAN = ["0","I","II","III","IV","V","VI","VII","VIII","IX","X","XI
 // 牌陣：id → 位置名稱
 export const SPREADS = {
   // gaze：「命運女神的目光落於：」之後的那個詞
-  one: { name: "單張・今日指引", gaze: "此刻", positions: ["今日之諭"] },
-  time: { name: "過去・現在・未來", gaze: "因果", positions: ["往昔", "此刻", "將臨"] },
-  choice: { name: "二選一", gaze: "抉擇", positions: ["左徑", "右徑", "神示"] },
-  mind: { name: "身・心・靈", gaze: "本心", positions: ["身", "心", "靈"] }
+  // plain：牌位名稱旁的白話小字，讓人一看就懂這個位置在問什麼（名稱保留古典，白話補在旁邊）
+  one: { name: "單張・今日指引", gaze: "此刻", positions: ["今日之諭"], plain: ["今天的提醒"] },
+  time: { name: "過去・現在・未來", gaze: "因果", positions: ["往昔", "此刻", "將臨"], plain: ["從前", "現在", "之後"] },
+  choice: { name: "二選一", gaze: "抉擇", positions: ["左徑", "右徑", "神示"], plain: ["第一個選擇", "第二個選擇", "先看清的事"] },
+  mind: { name: "身・心・靈", gaze: "本心", positions: ["身", "心", "靈"], plain: ["身體與日子", "心情與人", "真正想要的"] }
 };
 export const WEIGHTS = { one: [1.5], time: [0.4, 0.8, 1.3], choice: [0, 0, 0.6], mind: [0.7, 0.7, 0.7] };
 

@@ -74,8 +74,8 @@ export function buildReading({ question, topicSel, spread, picked, seed }) {
     const a = cards[0].score, b = cards[1].score;
     R.verdict = {
       level: Math.abs(d) >= 1 ? 1 : 2,
-      text: d >= 1 ? "左徑的光比較亮。" : d <= -1 ? "右徑的光比較亮。" : "兩條路差不多亮，答案在第三張牌裡。",
-      detail: `左徑上是${nmo(picked[0])}，右徑上是${nmo(picked[1])}；` + (a < 0 && b < 0 ? "兩條路現在都有荊棘，" + (Math.abs(d) >= 1 ? "只是其中一條比較好走。" : "很難分出高下。") : a > 0 && b > 0 ? "兩條路都走得通，" + (Math.abs(d) >= 1 ? "但其中一條更順。" : "各有各的好。") : Math.abs(d) >= 1 ? "兩條路的狀況明顯不同。" : "兩條路各有得失。")
+      text: d >= 1 ? "左邊那條路，光比較亮。" : d <= -1 ? "右邊那條路，光比較亮。" : "兩條路差不多亮，答案在中間那張牌裡。",
+      detail: `左邊（你先想到的選擇）是${nmo(picked[0])}，右邊（另一個選擇）是${nmo(picked[1])}；` + (a < 0 && b < 0 ? "兩條路現在都有荊棘，" + (Math.abs(d) >= 1 ? "只是其中一條比較好走。" : "很難分出高下。") : a > 0 && b > 0 ? "兩條路都走得通，" + (Math.abs(d) >= 1 ? "但其中一條更順。" : "各有各的好。") : Math.abs(d) >= 1 ? "兩條路的狀況明顯不同。" : "兩條路各有得失。")
     };
   } else {
     const s = cards.reduce((a, c) => a + c.score * c.weight, 0), lv = levelOf(s);
@@ -175,8 +175,8 @@ export function readingParagraphs(R) {
     P([2], `如果照現在的步調走下去，在前面等著你的是${b(C[2])}。${C[2].reading}` + (R.trend === "下降" ? "牌在提醒：步調如果不調整，情況會慢慢往下走。" : R.trend === "上升" ? "運勢正在往上走；愈往前，天色愈亮。" : ""));
   } else if (id === "choice") {
     P([], "兩條路", "h");
-    P([0], `左徑上出現的是${b(C[0])}。${C[0].reading}`);
-    P([1], `右徑上出現的是${b(C[1])}。${C[1].reading}`);
+    P([0], `左邊這條路，也就是你先想到的那個選擇，出現的是${b(C[0])}。${C[0].reading}`);
+    P([1], `右邊這條路，你的另一個選擇，出現的是${b(C[1])}。${C[1].reading}`);
     P([2], `不管你選哪一條路，${b(C[2])}都有一句話要告訴你。${C[2].reading}`);
   } else {
     P([], "身・心・靈", "h");

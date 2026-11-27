@@ -27,13 +27,25 @@ export function aiBasis(R) {
     二選一說明: R.spread.id === "choice" ? "左徑是求問者心裡先想到的選擇，右徑是另一個；問題裡若寫了兩個選擇，前一個是左徑" : undefined,
     揭牌時說過的話: R.glimpses && R.glimpses.length ? R.glimpses : undefined,
     // 說法提醒：與 oracle-prompt.js 的規則相同。Worker 的系統提示要重新部署才會更新，這一欄讓新規則在部署前就生效
-    說法提醒: "像神殿裡的老祭司當面說話：白話，但莊嚴、帶一點神祕，不要太現代；不用流行語、網路用語、職場口頭禪（例如硬撐、內捲、躺平、擺爛、卡關、舒適圈、搞定）。不要用「不是A，是B」「不是A，而是B」「與其A不如B」這類句型；不要替他排期限（例如「這一週內就講」）；不要叫他把事情一條條寫下來、列清單、深呼吸這類功課；不要激勵打氣，也不要評價他的能力（例如「你的本事不缺」）；段落不要用漂亮的道理收尾。結尾不必說「牌只是指出方向」。神話典故是選用的，不要用神話開頭，全文最多一句，不貼切就不提。揭牌時說過的話不要重複。抉擇牌陣：問題裡若寫了兩個選擇，前一個是左徑、後一個是右徑，用他的說法稱呼；沒寫就說「你先想到的那個選擇」「另一個選擇」。",
+    說法提醒: "像神殿裡的老祭司當面說話：白話，但莊嚴、帶一點神祕，不要太現代；不用流行語、網路用語、職場口頭禪（例如硬撐、內捲、躺平、擺爛、卡關、舒適圈、搞定）。不要用「不是A，是B」「不是A，而是B」「與其A不如B」這類句型；不要替他排期限（例如「這一週內就講」）；不要叫他把事情一條條寫下來、列清單、深呼吸這類功課；不要激勵打氣，也不要評價他的能力（例如「你的本事不缺」）；段落不要用漂亮的道理收尾。結尾不必說「牌只是指出方向」。最重要：開口之前，第一行先寫〔底稿：……〕，40～80字，只給你自己看（求問者看不到）：這件事實際要做什麼、在什麼地方、牽涉哪些人、他大概在顧慮什麼；抉擇牌陣再寫明左徑、右徑各指哪個選擇。寫完底稿換行，再寫讖語與正文，每一段都照底稿裡的畫面講。每一段都要落在他問的那件事本身，把牌意翻成那件事在現實裡會發生的情形（例如問要不要去投票，就講跑一趟、排隊、站在圈票處拿不定主意、家人怎麼說、開票那晚的心情），讓人不看小標也知道在講他的事；不要只把牌義換個說法重講。不拿牌當主詞（不寫「這條路的牌面不太穩」「牌是穩的」「牌面顯示」），不用穩不穩、吉不吉、有利不利的評分口吻，直接說事情會順還是會卡、卡在哪。問到選舉、政治時，不替任何候選人、政黨或議題表態，只談他自己去不去、心裡掛著什麼。小標一字不改照牌位名寫（抉擇牌陣寫【左徑】【右徑】【神示】），他的說法放在內文。神話典故是選用的，不要用神話開頭，全文最多一句，不貼切就不提。揭牌時說過的話不要重複。抉擇牌陣：問題裡若寫了兩個選擇，前一個是左徑、後一個是右徑，用他的說法稱呼；問「要不要做某件事」時，左徑是做、右徑是不做；沒寫就說「你先想到的那個選擇」「另一個選擇」。",
     趨勢: R.trend, 牌組合: R.combos.length ? R.combos : undefined, 逆位張數: R.reversedCount, 牌陣全貌: R.synthesis && R.synthesis.length ? R.synthesis.map(x => x.text) : undefined, 注意事項: R.notes.length ? R.notes : undefined
   };
 }
 export const aiMessages = R => oracleMessages(aiBasis(R));
 
-async function viaEndpoint(R, onText) {
+// 女祭司開口前先寫一行〔底稿：……〕替自己把這件事想成現實畫面（求問者看不到）：
+// 底稿還沒寫完前不顯示任何字，寫完就整行拿掉；模型沒寫底稿時原樣顯示
+export function stripDraft(t) {
+  const s = String(t || ""), lead = s.replace(/^\s+/, "");
+  if (!lead) return "";
+  if (!lead.startsWith("〔")) return s;
+  if (lead.length < 3 && "〔底稿".startsWith(lead)) return "";
+  if (!lead.startsWith("〔底稿")) return s;
+  const end = lead.indexOf("〕");
+  return end < 0 ? "" : lead.slice(end + 1).replace(/^\s+/, "");
+}
+async function viaEndpoint(R, onText0) {
+  const onText = t => onText0(stripDraft(t));
   const res = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basis: aiBasis(R) }) });
   if (!res.ok || !res.body) {
     let info = {}; try { info = await res.json(); } catch (_) {}
@@ -49,15 +61,16 @@ async function viaEndpoint(R, onText) {
       try { const j = JSON.parse(m[1]); const d = j.choices?.[0]?.delta?.content; if (d) { txt += d; onText(txt); } } catch (_) {}
     }
   }
-  return txt;
+  return stripDraft(txt);
 }
-async function viaSample(R, onText) {
+async function viaSample(R, onText0) {
+  const onText = t => onText0(stripDraft(t));
   const sample = await getSample();
   if (!sample) throw Object.assign(new Error("unavailable"), { code: "unavailable" });
   const prompt = aiMessages(R).map(m => m.content).join("\n\n");
   let out = "";
   await sample(prompt, { cache: false, onText: ({ text }) => { if (text !== "Thinking...") { out = text; onText(text); } } });
-  return out;
+  return stripDraft(out);
 }
 
 /** 串流細說；onText(全文) 每次收到新文字時呼叫 */

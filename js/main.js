@@ -894,7 +894,7 @@ requestAnimationFrame(loop);
 // 流量統計：設定裡填了才載入（不用 cookie）
 (function loadAnalytics() {
   if (/^(localhost|127\.|\[::1\])/.test(location.hostname)) return; // 本機測試不計
-  if (CONFIG.CF_ANALYTICS_TOKEN) {
+  if (CONFIG.CF_ANALYTICS_TOKEN && !document.querySelector("script[data-cf-beacon]")) {
     const sc = document.createElement("script"); sc.defer = true; sc.src = "https://static.cloudflareinsights.com/beacon.min.js";
     sc.setAttribute("data-cf-beacon", JSON.stringify({ token: CONFIG.CF_ANALYTICS_TOKEN })); document.head.appendChild(sc);
   }

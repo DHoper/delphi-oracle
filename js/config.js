@@ -13,7 +13,7 @@ export const CONFIG = {
   // 擴充牌義資料（data/frames.json、data/major/NN.json）；有放檔案時才設為 true，免得每次載入都多出幾十個 404 請求
   EXT_DATA: false,
   // 流量統計（填了才會載入；兩個可擇一或都填）
-  // Cloudflare Web Analytics：Cloudflare 後台 → Web Analytics → 新增網站 dhoper.github.io → 複製 script 裡的 token
+  // Cloudflare Web Analytics：已直接寫在 index.html 的 <head>（最穩定）；這裡的 token 只在 index.html 沒有那段時才補載入
   CF_ANALYTICS_TOKEN: "828c8d29a9f04250a3a8183246fa4fbf",
   // GoatCounter：到 goatcounter.com 註冊後的代號（例如 delphi-oracle，即 https://delphi-oracle.goatcounter.com）
   GOATCOUNTER: ""

@@ -524,6 +524,9 @@ async function flip(c, fast = false) {
   let shown; const gate = new Promise(r => (shown = r));
   stage.classList.add("entranced"); if (line.heavy) { stage.classList.add("eye-narrow"); audio.hiss(); }
   const spoken = speak(line, { gate, hold: last ? 1500 : 1100 });
+  // 綠煙：地縫的煙轉為幽綠，聚在她說話的地方（話語從煙裡浮出）；話說完才退
+  { const r = utterEl.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    smoke.set({ green: 1, mist: line.heavy ? 1.15 : 0.95, mistY: (r.top - sr.top + 46) / sr.height }); }
   // 牌翻過來時整面是金光；光自牌心向外化開，露出牌圖，邊緣最後褪去
   fire.burst(c.x, c.y, 18, { up: 0.9, spread: 2.2, w: W * 0.9 });
   await tween(fast ? 600 : 1000, p => c.face.style.setProperty("--v", `${(1 - Math.pow(1 - p, 2.2)) * 149 - 24}%`));
@@ -549,6 +552,7 @@ async function flip(c, fast = false) {
   S.flipped++;
   await spoken;
   stage.classList.remove("entranced", "eye-narrow", "eye-warm");
+  smoke.set({ green: 0 }); applyAtmosphere();
   if (S.phase !== "flip") return;
   if (last) { await oracle(); return; }
   S.speaking = false; armCards();
@@ -565,7 +569,7 @@ $("flipAll").addEventListener("click", async () => {
 // ---------------- 神諭：蛇眼亮起、逐字顯現 ----------------
 let speakToken = 0;
 function utter(text, ms = 70) {
-  speakToken++; utterEl.classList.remove("speech");
+  speakToken++; utterEl.classList.remove("speech"); utterEl.style.fontSize = "";
   utterEl.innerHTML = [...text].map((ch, i) => `<span style="animation-delay:${D(i * ms)}ms">${esc(ch)}</span>`).join("");
   return wait(text.length * ms + 700);
 }
@@ -587,9 +591,17 @@ function speechHTML(str, ms, pause) {
   const html = out.map(o => typeof o === "string" ? o : `<span${o.cry ? ' class="cry"' : ""} style="animation-delay:${D(o.t)}ms">${esc(o.ch)}</span>`).join("");
   return { html, end: t, cries };
 }
+// 手機上畫面矮，話一長就會掉到畫面外：先把整段話排一次，放不下就把字縮小（最小 12px），留出底部按鈕的位置
+function fitSpeech(L) {
+  utterEl.style.fontSize = "";
+  utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead">${esc(L.lead || "")}</span><span class="sp-vis">${esc(L.text || "")}</span></span><span class="sp-tail">${esc(L.tail || "").replace(/\n/g, "<br>")}</span>`;
+  const avail = stage.getBoundingClientRect().bottom - utterEl.getBoundingClientRect().top - 100;
+  let fs = parseFloat(getComputedStyle(utterEl).fontSize);
+  while (utterEl.scrollHeight > avail && fs > 12) { fs -= 0.5; utterEl.style.fontSize = fs + "px"; }
+}
 async function speak(L, { gate = Promise.resolve(), hold = 1000 } = {}) {
   const my = ++speakToken, alive = () => speakToken === my, ms = L.heavy ? 62 : 48, pause = L.heavy ? 680 : 500;
-  utterEl.classList.add("speech"); utterEl.classList.remove("fade");
+  utterEl.classList.add("speech"); utterEl.classList.remove("fade"); fitSpeech(L);
   utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead"></span><span class="sp-vis"></span></span><span class="sp-tail"></span>`;
   const play = (sel, str) => {
     if (!str || !alive()) return Promise.resolve();
@@ -864,7 +876,7 @@ stage.addEventListener("scroll", () => { if (stage.scrollTop || stage.scrollLeft
 layout(); applyAtmosphere();
 requestAnimationFrame(loop);
 (CONFIG.EXT_DATA ? loadExtData() : Promise.resolve()).then(() => { if (S.R) S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed }); });
-window.__delphi = { S, flip, drawCard, again, offer, sealFx, chooseSpread, dropOmen, showStep, rowCards }; // 測試用
+window.__delphi = { S, flip, drawCard, again, offer, sealFx, chooseSpread, dropOmen, showStep, rowCards, smoke }; // 測試用
 
 // ---------------- 進入畫面：山巒上的神殿 → 撥開帷幕 → 內殿見證異相 ----------------
 // 等神殿、內殿、巨蟒與字體載好，帷幕才能撥開；第一次觸碰帷幕時開啟聲音（瀏覽器要求聲音由點擊啟動）

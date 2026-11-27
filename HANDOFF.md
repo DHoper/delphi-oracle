@@ -81,7 +81,7 @@
 ## 11-27 補充
 - **每次推上 Pages 前執行 `python tools/stamp.py`**：替 CSS 與所有 JS 模組加內容版本號（import map），手機與 LINE 內建瀏覽器才不會沿用快取舊檔。
 - AI 人設：`AI人設.md`（完整文件）→ `js/oracle-prompt.js`（實際提示詞）；改提示詞後重新部署 Worker。
-- 每日次數限制暫時關閉：`worker/wrangler.toml` 的 `QUOTA_OFF = "1"`，恢復改 "0" 再部署。
+- 每日次數（11-27 定）：不限個人次數，全站每天 200 次（`DAILY_TOTAL`，程式預設 200；舊的 DAILY_PER_USER／DAILY_SITE／QUOTA_OFF 已不讀）。全殿剩 30 回以內才在叩問頁顯示剩餘次數。**改了 Worker，要重新部署才生效。**
 - 全站稱呼求問者為「你」（不再用「汝」）；叩問為必填。
 
 - 揭牌台詞：`js/tarot/reveal.js`。揭牌是「神諭湧現」：女祭司被神附身，斷續吐出異象（畫面上沒有女祭司，只有她的聲音）。GLIMPSE 為 22 張×正逆各三則異象（斷續的意象，不說牌名、不解讀、不對「你」說話），LEAD 為牌位開口（每處三種，稱「那人」），onset 為被攫住的那一下，WAIT／REL／BACK 為回過神的話；用哪一則由種子決定。手機上放不下時 `fitSpeech()` 會縮字。揭牌時地縫的煙轉綠聚在說話處（`smoke.set({ green, mist, mistY })`）。節奏在 `main.js` 的 `speechHTML()／speak()`：「……」停頓、「！」那一截為驚呼（放大＋畫面一震），凶兆說得慢；牌位一句在牌翻面時就說，異象等牌面露出才說；她說話時其他牌不能翻（輕抖），說完停一拍才再亮起。

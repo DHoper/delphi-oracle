@@ -713,11 +713,12 @@ function paintVoice(text, done) {
     });
   }
   $("voice").classList.toggle("speaking", !done); $("voiceWait").hidden = !!text.trim();
-  if (done && aiQuota.user != null) $("voiceNote").textContent = `今天女祭司還能為你開口 ${aiQuota.user} 次`;
+  if (done && aiQuota.site != null && aiQuota.site <= LOW_QUOTA) $("voiceNote").textContent = `今天殿中的神力只剩 ${aiQuota.site} 回`;
 }
+// 全殿剩下幾回以內才提醒；平常不顯示次數
+const LOW_QUOTA = 30;
 const QUOTA_MSG = {
-  quota_user: n => ["神力耗盡", `今天女祭司已經為你開口 ${n || 5} 次，神力用完了。\n神殿不取分文，所以每人每天以 ${n || 5} 次為限。\n這次改用古法解讀；過了午夜神力恢復，再來問吧。`],
-  quota_site: n => ["神力耗盡", `今天來問的人太多，殿中的神力已經用完了。\n神殿不取分文，所以全殿每天一共以 ${n || 100} 次為限。\n這次改用古法解讀；過了午夜再來問吧。`]
+  quota_site: n => ["神力耗盡", `今天來問的人太多，殿中的神力已經用完了。\n神殿不取分文，所以全殿每天一共以 ${n || 200} 次為限。\n這次改用古法解讀；過了午夜再來問吧。`]
 };
 function voiceFail(e) {
   const v = $("voice"); if (!v || v.classList.contains("silent")) return;
@@ -725,7 +726,7 @@ function voiceFail(e) {
   const quota = QUOTA_MSG[e && e.code];
   $("voiceNote").textContent = quota ? "神力用完了，這次改用古法解讀。" : e && e.code === "rate_limited" ? "來問的人太多，女祭司一時應不過來；這次改用古法解讀。" : "今夜神氣太稀薄，女祭司沒能開口；這次改用古法解讀。";
   const deep = $("deep"); deep.open = true; deep.classList.add("lead");
-  if (quota) { const n = e.info && (e.info.perUser || e.info.perSite); const [t, b] = quota(n); showNotice(t, b); }
+  if (quota) { const n = e.info && e.info.perSite; const [t, b] = quota(n); showNotice(t, b); }
 }
 function showNotice(title, body) {
   $("noticeTitle").textContent = title; $("noticeBody").textContent = body;
@@ -799,10 +800,10 @@ function followSlots(ms) {
 // 叩問：寫下所問（可留白），按「叩問」或 Enter 進入下一步
 function showQuota() {
   fetchQuota().then(q => {
-    const el = $("qQuota"); if (!q || q.unlimited) { el.textContent = ""; el.classList.remove("out"); return; }
-    const n = Math.min(q.user, q.site);
-    el.textContent = n > 0 ? `今天女祭司還能為你開口 ${n} 次` : "今天的神力用完了，這次改用古法解讀";
-    el.title = n > 0 ? "" : "神殿不取分文，每人每天可請女祭司解讀 5 次；過了午夜，神力便會恢復";
+    const el = $("qQuota"), n = q && typeof q.site === "number" ? q.site : null;
+    if (n == null || n > LOW_QUOTA) { el.textContent = ""; el.title = ""; el.classList.remove("out"); return; }
+    el.textContent = n > 0 ? `今天殿中的神力只剩 ${n} 回` : "今天殿中的神力用完了，這次改用古法解讀";
+    el.title = n > 0 ? "" : `神殿不取分文，全殿每天一共可請女祭司解讀 ${q.perSite || 200} 次；過了午夜，神力便會恢復`;
     el.classList.toggle("out", n <= 0);
   });
 }

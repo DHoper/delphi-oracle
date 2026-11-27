@@ -6,11 +6,8 @@ compatibility_date = "2026-11-01"
 # 允許呼叫的網站來源（逗號分隔）；localhost 一律放行，方便本機測試
 ALLOWED_ORIGINS = "https://dhoper.github.io"
 MODEL = "deepseek-flash"
-# 每日上限（台灣時間午夜重置）：免費網站，為節省成本
-DAILY_PER_USER = "5"
-DAILY_SITE = "100"
-# "1"＝暫時不限每日次數（需求方 11-27 要求暫時拿掉）；恢復限制改回 "0" 後重新部署
-QUOTA_OFF = "1"
+# 每日上限（台灣時間午夜重置）：不限個人次數，全站每天一共幾次（需求方 11-27 定 200）
+DAILY_TOTAL = "200"
 # 求問者寫下的問題最多幾個字
 QUESTION_MAX = "60"
 # 分享：每日最多建立幾則分享連結；分享頁轉回的網站網址
@@ -23,7 +20,7 @@ name = "RL"
 namespace_id = "2611"
 simple = { limit = 6, period = 60 }
 
-# 每日次數計數（鍵：日期＋IP 雜湊、日期＋全站），兩天後自動過期
+# 每日次數計數（鍵：日期＋全站），兩天後自動過期
 [[kv_namespaces]]
 binding = "QUOTA"
 id = "ffd986b626a94aba97534849c86a715c"

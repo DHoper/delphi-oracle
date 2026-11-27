@@ -86,4 +86,5 @@
 
 - 揭牌台詞：`js/tarot/reveal.js`。揭牌是「神諭湧現」：女祭司被神附身，斷續吐出異象（畫面上沒有女祭司，只有她的聲音）。GLIMPSE 為 22 張×正逆各三則異象（斷續的意象，不說牌名、不解讀、不對「你」說話），LEAD 為牌位開口（每處三種，稱「那人」），onset 為被攫住的那一下，WAIT／REL／BACK 為回過神的話；用哪一則由種子決定。手機上放不下時 `fitSpeech()` 會縮字。揭牌時地縫的煙轉綠聚在說話處（`smoke.set({ green, mist, mistY })`）。節奏在 `main.js` 的 `speechHTML()／speak()`：「……」停頓、「！」那一截為驚呼（放大＋畫面一震），凶兆說得慢；牌位一句在牌翻面時就說，異象等牌面露出才說；她說話時其他牌不能翻（輕抖），說完停一拍才再亮起。
 - 牌位白話小字：`js/tarot/data.js` 的 `SPREADS[*].plain`。
-- AI 說話規則改了（11-27 第 72、76 項）：`js/oracle-prompt.js` 需重新部署 Worker 才會在正式站完全生效；部署前，網站送出的解讀依據已附「說法提醒」欄位補上新規則。
+- AI 說話規則（11-27 第 72、76、80 項）已於 11-27 重新部署 Worker 生效（需求方在 Cloudflare 後台貼上 esbuild 打包的單檔後部署）。網站送出的解讀依據仍附「說法提醒」欄位作為雙重保險。
+- 沒有電腦可跑 wrangler 時的部署法：`npx esbuild worker/src/index.js --bundle --format=esm --platform=neutral --charset=utf8 --outfile=worker-bundle.js`，把檔案內容貼進 Cloudflare 後台 Worker 的「編輯程式碼」再按部署（變數與 KV 綁定會保留）。

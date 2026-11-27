@@ -11,8 +11,8 @@ const KW = {
   career: /工作|事業|職|升遷|面試|老闆|主管|同事|公司|創業|考試|學業|專案|生意|業績|錄取/g,
   money: /錢|財|投資|股|收入|薪|買房|負債|債|理財|賺|存款|基金/g
 };
-const LEVEL_TEXT = ["好兆頭很明顯，你想要的事正順風前進。", "門已經開了一條縫，你只要伸手就推得開。", "天平還在搖擺，會倒向哪邊，就看你的下一步。", "前面起了霧，時機還沒成熟，硬求也沒有用。", "這條路暫時走不通，先停下腳步，等更好的時機。"];
-const LEVEL_DETAIL = ["整個牌面都很明亮，事情正往你希望的方向走。", "局勢站在你這邊，但結果還是要靠你親手去拿。", "牌面好壞各半；現在，你正站在岔路口。", "牌說時機還沒成熟；先解開眼前的結，比硬闖更好。", "牌在提醒你：這條路現在很難走通。換一種走法，或換個時間，也許會有不同的結果。"];
+const LEVEL_TEXT = ["吉兆昭然，你所求的事正順風而行。", "門已開了一道縫，你只要伸手，便推得開。", "天平仍在搖擺，倒向哪一邊，就看你的下一步。", "前方起了霧，時機未到，強求也無益。", "這條路一時走不通，先停下腳步，等待更好的時機。"];
+const LEVEL_DETAIL = ["整個牌面都很明亮，事情正往你所盼的方向走。", "時勢站在你這一邊，但結果仍要你親手去取。", "牌面吉凶各半；此刻，你正站在岔路口。", "牌說時機未到；先解開眼前的結，勝過強闖。", "牌在提醒你：這條路此時很難走通。換一種走法，或換一個時候，也許會有不同的結果。"];
 const PARENTS = ["gen", "love", "career", "money", "health", "growth"];
 const levelOf = s => (s >= 2.5 ? 0 : s >= 1 ? 1 : s > -1 ? 2 : s > -2.5 ? 3 : 4);
 
@@ -131,12 +131,12 @@ function synthesize(R, picked, seed) {
   // 大牌比例（只用大牌的牌組時每張都是大牌，這段觀察沒有意義，略過）
   if (CONFIG.MAJOR_ONLY) {}
   else if (n === 1) {
-    if (majors) S({ kind: "major", text: V(["抽到的是一張大牌，今天不是普通的一天，有更大的力量在推動你。", "這一張就是大牌，表示這件事不小，是命運給你的一道指示。"], seed) });
+    if (majors) S({ kind: "major", text: V(["抽到的是一張大牌，今天不是尋常的一日，有更大的力量在推著你。", "這一張就是大牌，表示這件事不小，是命運給你的一道指示。"], seed) });
     else S({ kind: "element", text: `這是一張${SUITS[M[0].suit].zh}，屬${EL_ZH[M[0].element]}，今天的事情，重心落在${EL_REALM[M[0].element]}上。` });
-  } else if (majors === n) S({ kind: "major", text: V(["三張都是大牌，這件事不簡單，背後有命運在推動；你能做的是順應和選擇，沒辦法完全掌控。", "全部都是大牌，這是人生的一道關口，比平常的起起落落重要得多。"], seed) });
+  } else if (majors === n) S({ kind: "major", text: V(["三張都是大牌，這件事非同小可，背後有命運在推動；你能做的是順應與抉擇，無法全然掌控。", "全部都是大牌，這是人生的一道關口，比平常的起起落落重要得多。"], seed) });
   else if (majors === n - 1 && n > 2) S({ kind: "major", text: "大牌佔了多數，這件事牽動的比表面看起來更深；有些部分已經不是你一個人能左右的。" });
-  else if (majors === 0) S({ kind: "major", text: V(["牌裡沒有大牌，這件事屬於日常層面，結果大多握在你自己手上。", "沒有大牌出現，命運沒有重重壓下來，這件事你可以親手調整。"], seed) });
-  else if (majors === 1 && n > 2) { const k = M.findIndex(m => m.arcana === "major"); S({ kind: "pivot", cards: [k], text: `${nm(picked[k])}是唯一的大牌，也是整件事的關鍵；另外兩張牌，都繞著它轉。` }); }
+  else if (majors === 0) S({ kind: "major", text: V(["牌裡沒有大牌，這件事行於日常之中，結果大多握在你自己手上。", "沒有大牌出現，命運沒有重重壓下，這件事你可以親手改變。"], seed) });
+  else if (majors === 1 && n > 2) { const k = M.findIndex(m => m.arcana === "major"); S({ kind: "pivot", cards: [k], text: `${nm(picked[k])}是唯一的大牌，也是整件事的樞紐；另外兩張牌，都繞著它轉。` }); }
   // 花色主導
   if (n > 1) {
     const cnt = {}; M.forEach(m => m.suit && (cnt[m.suit] = (cnt[m.suit] || 0) + 1));
@@ -150,14 +150,14 @@ function synthesize(R, picked, seed) {
     }
   }
   // 宮廷牌：可能是求問者自己的一面，或身邊的人
-  M.forEach((m, k) => { if (m.court) S({ kind: "court", cards: [k], text: `${nm(picked[k])}是一張宮廷牌，它可能是你現在的某一面，也可能是你身邊一位${COURT_TRAIT[m.element]}的人（不分男女），在這件事裡扮演某個角色。` }); });
+  M.forEach((m, k) => { if (m.court) S({ kind: "court", cards: [k], text: `${nm(picked[k])}是一張宮廷牌，它可能是你現在的某一面，也可能是你身邊一位${COURT_TRAIT[m.element]}的人（不分男女），在這件事裡擔著某個角色。` }); });
   // 元素尊貴
   R.dignity.forEach(d => S({ kind: "dignity", cards: [0, 1, 2], text: d.text }));
   // 逆位比例
   const rv = picked.filter(c => c.rev).length;
-  if (n > 1 && rv === n) S({ kind: "rev", cards: picked.map((_, k) => k), text: "所有牌都是逆位，力量全都往內收、卡住了，或還沒成形。現在別硬推，先安頓好你心裡的事。" });
-  else if (n > 1 && rv >= 2) S({ kind: "rev", cards: picked.map((c, k) => (c.rev ? k : -1)).filter(k => k >= 0), text: `這次有 ${rv} 張牌是逆位，力量卡住了，很多事還悶在心裡，或是還沒準備好。先別急著要結果，靜下心來再說。` });
-  else if (n > 2 && rv === 0) S({ kind: "rev", text: "三張都是正位，力量暢通，沒有被擋住的地方；該做的，就是往前走。" });
+  if (n > 1 && rv === n) S({ kind: "rev", cards: picked.map((_, k) => k), text: "所有牌都是逆位，力量都往內收、受了阻，或尚未成形。此時莫強推，先安頓好你心裡的事。" });
+  else if (n > 1 && rv >= 2) S({ kind: "rev", cards: picked.map((c, k) => (c.rev ? k : -1)).filter(k => k >= 0), text: `這次有 ${rv} 張牌是逆位，力量受了阻，許多事仍藏在心裡，或尚未備妥。先莫急著求結果，靜下心來再說。` });
+  else if (n > 2 && rv === 0) S({ kind: "rev", text: "三張都是正位，力量暢通，沒有受阻之處；該做的，就是往前走。" });
   return out;
 }
 
@@ -171,8 +171,8 @@ export function readingParagraphs(R) {
   else if (id === "time") {
     P([], "往昔・此刻・將臨", "h");
     P([0], `${v(["先看過去。", "回到起點。", "這件事的根，埋在過去。"], 1)}${b(C[0])}是它的源頭。${C[0].reading}`);
-    P([1], `${v(["那股力量一路延續到現在。", "接著來到現在。", "現在，"], 2)}${b(C[1])}反映出你眼前的處境。${C[1].reading}`);
-    P([2], `如果照現在的步調走下去，在前面等著你的是${b(C[2])}。${C[2].reading}` + (R.trend === "下降" ? "牌在提醒：步調如果不調整，情況會慢慢往下走。" : R.trend === "上升" ? "運勢正在往上走；愈往前，天色愈亮。" : ""));
+    P([1], `${v(["那股力量一路延續到現在。", "接著來到現在。", "現在，"], 2)}${b(C[1])}映照出你眼前的處境。${C[1].reading}`);
+    P([2], `如果照現在的步調走下去，在前面等著你的是${b(C[2])}。${C[2].reading}` + (R.trend === "下降" ? "牌在提醒：若不改變步調，情況會慢慢往下走。" : R.trend === "上升" ? "運勢正在往上走；愈往前，天色愈亮。" : ""));
   } else if (id === "choice") {
     P([], "兩條路", "h");
     P([0], `左邊這條路，也就是你先想到的那個選擇，出現的是${b(C[0])}。${C[0].reading}`);

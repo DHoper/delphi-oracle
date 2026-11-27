@@ -151,7 +151,7 @@ function showStep(n) {
   $("steps").children[2].disabled = S.topic === "auto"; layout();
   if (n !== 1) unfocusOmen(true);
   if (n === 0) showQuota();
-  if (n === 0 && !S.qIntro) { S.qIntro = true; setTimeout(() => whisper("把你想問的事寫在石上\n寫得越具體，神諭越清楚"), D(500)); }
+  if (n === 0 && !S.qIntro) { S.qIntro = true; setTimeout(() => whisper("把你想問的事刻在石上\n說得越分明，神諭越清楚"), D(500)); }
   $("omens").classList.remove("chosen");
   requestAnimationFrame(() => { fire.resize(); fire.set({ power: n === 1 ? 1.4 : 1 }); });
   if (n === 2) { $("whisper").classList.add("out"); showSigils(); }
@@ -426,7 +426,7 @@ async function ribbon() {
 }
 function updateDrawHint() {
   const left = SPREADS[S.spread].positions.length - S.picked.length;
-  hint.innerHTML = left ? `隨心取牌，還差 ${left} 張<small>手指滑過牌列再放開，或把牌拖到石桌上</small>` : "";
+  hint.innerHTML = left ? `憑心意取牌，尚缺 ${left} 張<small>手指滑過牌列再放開，或把牌拖到石桌上</small>` : "";
 }
 
 // ---------------- 抽牌 ----------------
@@ -633,8 +633,8 @@ function paintVoice(text, done) {
   if (done && aiQuota.user != null) $("voiceNote").textContent = `今天女祭司還能為你開口 ${aiQuota.user} 次`;
 }
 const QUOTA_MSG = {
-  quota_user: n => ["神力耗盡", `今天女祭司已經為你開口 ${n || 5} 次，神力用完了。\n這座神殿不收費，所以每人每天以 ${n || 5} 次為限。\n這次改用古法解讀；過了午夜神力恢復，再來問吧。`],
-  quota_site: n => ["神力耗盡", `今天來問的人太多，殿中的神力已經用完了。\n這座神殿不收費，所以全殿每天一共以 ${n || 100} 次為限。\n這次改用古法解讀；過了午夜再來問吧。`]
+  quota_user: n => ["神力耗盡", `今天女祭司已經為你開口 ${n || 5} 次，神力用完了。\n神殿不取分文，所以每人每天以 ${n || 5} 次為限。\n這次改用古法解讀；過了午夜神力恢復，再來問吧。`],
+  quota_site: n => ["神力耗盡", `今天來問的人太多，殿中的神力已經用完了。\n神殿不取分文，所以全殿每天一共以 ${n || 100} 次為限。\n這次改用古法解讀；過了午夜再來問吧。`]
 };
 function voiceFail(e) {
   const v = $("voice"); if (!v || v.classList.contains("silent")) return;
@@ -719,7 +719,7 @@ function showQuota() {
     const el = $("qQuota"); if (!q || q.unlimited) { el.textContent = ""; el.classList.remove("out"); return; }
     const n = Math.min(q.user, q.site);
     el.textContent = n > 0 ? `今天女祭司還能為你開口 ${n} 次` : "今天的神力用完了，這次改用古法解讀";
-    el.title = n > 0 ? "" : "網站免費，為了節省成本，每人每天可以請女祭司解讀 5 次；過了午夜就恢復";
+    el.title = n > 0 ? "" : "神殿不取分文，每人每天可請女祭司解讀 5 次；過了午夜，神力便會恢復";
     el.classList.toggle("out", n <= 0);
   });
 }

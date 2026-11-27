@@ -182,7 +182,8 @@ export async function renderShareCard(R, { shared = false, ai = "", question = "
   ctx.font = `700 58px ${DISP}`; const hl = byComma(ctx, hero, 900, 6).slice(0, 2);
   ctx.font = `400 33px ${BODY}`; const ex = excerpt(R, ai, 190), el = ex ? wrap(ctx, ex, 880, 1).slice(0, 7) : []; const lh = 54;
   const blockH = (ql.length ? ql.length * 46 + 24 : 0) + (n > 1 ? 50 : 10) + ch + 70 + 70 + hl.length * 80 + 10 + (el.length ? el.length * lh + 50 : 0);
-  const avail = (H - 280) - 230; let y = 230 + Math.max(0, (avail - blockH) / 2);
+  // 多出來的高度分三份：上方一些、牌與讖語之間最多（讓文字往下坐）、下方留一些靠近頁尾
+  const avail = (H - 280) - 230, spare = Math.max(0, avail - blockH), midGap = spare * 0.45; let y = 230 + spare * 0.3;
   if (ql.length) { ctx.font = `600 32px ${DISP}`; ctx.fillStyle = "#e6d3a6"; ql.forEach((l, k) => spaced(ctx, l, W / 2, y + 32 + k * 46, 2)); y += ql.length * 46 + 24; }
   const top = y + (n > 1 ? 50 : 10);
   R.cards.forEach((c, k) => {
@@ -193,7 +194,7 @@ export async function renderShareCard(R, { shared = false, ai = "", question = "
     ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 10; ctx.font = `700 ${c.name.length > 4 ? 30 : 34}px ${DISP}`; ctx.fillStyle = "#f3d48b";
     spaced(ctx, c.name + (c.rev ? "・逆" : ""), x + cw / 2, top + ch + 50, 3);
   });
-  y = top + ch + 140;
+  y = top + ch + 140 + midGap;
   // 讖語（AI 的第一句；沒有就用古法神諭）
   ctx.font = `700 58px ${DISP}`; ctx.shadowColor = "rgba(0,0,0,.95)"; ctx.shadowBlur = 18;
   hl.forEach((l, k) => { ctx.fillStyle = goldFill(ctx, y + k * 80 - 52, y + k * 80 + 10); spaced(ctx, l, W / 2, y + k * 80, 6); });

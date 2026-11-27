@@ -597,7 +597,7 @@ function speechHTML(str, ms, pause) {
     if (ch === "\n") { out.push("<br>"); t += 300; seg = out.length; return; }
     out.push({ ch, t }); t += ms;
     if (ch === "…") { if (chars[i + 1] !== "…") t += pause; }
-    else if (ch === "。") t += 340; else if (ch === "，" || ch === "、") t += 160; else if (ch === "！") t += 300;
+    else if (ch === "。") t += 340; else if (ch === "，" || ch === "、") t += 160; else if (ch === "！") t += 300; else if (ch === "？") t += 380;
     if ("…。，、！？".includes(ch)) {
       if (ch === "！") { for (let j = seg; j < out.length; j++) if (typeof out[j] === "object") out[j].cry = true; const f = out.slice(seg).find(o => typeof o === "object"); if (f) cries.push(f.t); }
       seg = out.length;

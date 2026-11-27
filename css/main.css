@@ -977,3 +977,15 @@ details.deep.lead summary{display:none}
 /* 牌位名稱旁的白話小字 */
 .slot .lab small{display:block;margin-top:1px;font:500 10.5px/1.25 var(--f-body);letter-spacing:.08em;color:rgba(184,165,130,.8);white-space:nowrap}
 .oracle-text h4 small{margin-left:.7em;font:500 12px/1 var(--f-body);letter-spacing:.12em;color:var(--mute)}
+/* 揭牌：神諭湧現時的說話（第 82 項） */
+.card.tappable .back{animation-delay:var(--beckon-delay,0s)}
+.utter.speech .sp-lead{color:#c9b98f;font-style:normal;letter-spacing:.1em}
+.utter.speech .sp-lead:not(:empty){margin-bottom:.3em}
+.utter.speech .sp-vis{color:#efe3c6}
+.utter.speech span.cry{animation-name:glyphCry;color:#fff3d1;font-weight:700;text-shadow:0 0 14px rgba(255,214,140,.75)}
+@keyframes glyphCry{0%{opacity:0;filter:blur(8px);transform:scale(1.6)}60%{opacity:1;filter:blur(0);transform:scale(.94)}100%{opacity:1;filter:none;transform:scale(1)}}
+.utter.speech .sp-lead,.utter.speech .sp-vis{display:block}
+.utter.speech span.cry{display:inline-block}
+.stage.tremor{animation:tremor .42s linear}
+@keyframes tremor{15%{translate:-3px 1px}30%{translate:3px -1px}45%{translate:-2px -2px}60%{translate:2px 1px}75%{translate:-1px 0}}
+@media (prefers-reduced-motion:reduce){.stage.tremor{animation:none}.utter.speech span.cry{animation-name:glyph}}

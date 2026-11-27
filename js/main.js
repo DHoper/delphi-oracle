@@ -489,21 +489,41 @@ async function endDraw() {
   S.R = buildReading({ question: (S.question || ""), topicSel: S.topic, spread: S.spread, picked: S.picked, seed: S.seed });
   S.R.glimpses = glimpses(S.R); startAI(S.R);
   S.flipOrder = [];
-  hint.textContent = "點牌翻開，領受神諭"; $("flipAll").hidden = SPREADS[S.spread].positions.length < 2;
-  S.cards.filter(c => c.picked).forEach(c => { c.el.classList.add("tappable"); c.el.onclick = () => flip(c); });
+  hint.textContent = "點牌翻開，領受神諭"; S.speaking = false; S.autoFlip = false; armCards();
+  S.cards.filter(c => c.picked).forEach(c => (c.el.onclick = () => flip(c)));
   S.busy = false;
 }
 
-// ---------------- 翻牌：金光化開 → 正位流光／逆位餘燼燒轉 ----------------
+// ---------------- 翻牌：神諭湧現 ----------------
+// 節奏：點牌 → 牌抬起翻面 → 金光化開時她被神諭攫住，先吐出「往哪裡看」→ 牌面露出，異象湧出 → 回過神的一句
+// → 停一拍，剩下的牌才再亮起來可以點。她說話時其他牌不能翻，免得話被打斷、神諭疊在一起。
+// 尚未翻開的牌：她沒在說話時才亮起、可點；全部翻開按鈕只在還剩兩張以上時出現
+function armCards() {
+  const rest = S.cards.filter(c => c.picked && !c.flipped);
+  rest.forEach((c, i) => { c.el.style.setProperty("--beckon-delay", `${i * 0.35}s`); c.el.classList.toggle("tappable", !S.speaking); });
+  $("flipAll").hidden = S.speaking || rest.length < 2 || S.autoFlip;
+}
 async function flip(c, fast = false) {
-  if (c.flipped || S.phase !== "flip") return; c.flipped = true; c.el.classList.remove("tappable"); c.el.onclick = null;
+  if (c.flipped || S.phase !== "flip") return;
+  if (S.speaking) { // 神諭還在湧現：牌輕輕一抖，不翻
+    c.el.classList.remove("shudder"); void c.el.offsetWidth; c.el.classList.add("shudder");
+    setTimeout(() => c.el.classList.remove("shudder"), 460); return;
+  }
+  c.flipped = true; S.speaking = true; c.el.onclick = null; c.el.classList.remove("tappable"); armCards(); hint.textContent = "";
   const k = c.slot, cw = c.el.offsetWidth, ch = c.el.offsetHeight, W = cw * c.s, Hh = ch * c.s;
+  const order = S.flipOrder.length, prevK = order ? S.flipOrder[order - 1] : -1; S.flipOrder.push(k);
+  const total = SPREADS[S.spread].positions.length, last = order === total - 1, line = revealLine(S.R, k, order, prevK);
+  utterEl.classList.add("fade"); // 上一張的話先退下
   const tf = (lift, s) => `translate(${c.x - cw / 2}px,${c.y - ch / 2 - lift}px) scale(${s})`;
   c.el.style.zIndex = 300; c.face.style.setProperty("--v", "-24%"); c.face.style.setProperty("--r", "0%");
   c.el.animate([{ transform: tf(0, c.s) }, { transform: tf(20, c.s * 1.12) }], { duration: D(500), easing: "ease-out", fill: "forwards" });
   const turn = c.inner.animate([{ transform: "rotateY(0deg)" }, { transform: "rotateY(180deg)" }], { duration: D(fast ? 600 : 850), easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" });
   setTimeout(() => { audio.flip(); smoke.burst([c.x / stage.clientWidth, c.y / stage.clientHeight], 0.35); }, D(400));
   await turn.finished; c.inner.style.transform = "rotateY(180deg)"; turn.cancel();
+  // 牌一翻過來，神諭就攫住了她：先說出往哪裡看；牌面完全露出後才說出異象
+  let shown; const gate = new Promise(r => (shown = r));
+  stage.classList.add("entranced"); if (line.heavy) { stage.classList.add("eye-narrow"); audio.hiss(); }
+  const spoken = speak(line, { gate, hold: last ? 1500 : 1100 });
   // 牌翻過來時整面是金光；光自牌心向外化開，露出牌圖，邊緣最後褪去
   fire.burst(c.x, c.y, 18, { up: 0.9, spread: 2.2, w: W * 0.9 });
   await tween(fast ? 600 : 1000, p => c.face.style.setProperty("--v", `${(1 - Math.pow(1 - p, 2.2)) * 149 - 24}%`));
@@ -515,31 +535,31 @@ async function flip(c, fast = false) {
     stage.classList.add("eye-narrow"); c.el.classList.add("shudder", "burning"); audio.hiss();
     const sparks = p => { if (Math.random() < 0.55) fire.burst(c.x + (Math.random() - 0.5) * W * (0.3 + p), c.y + (Math.random() - 0.5) * Hh * (0.3 + p), 2, { down: true, spread: 1.2, hue: 12 }); };
     if (hasArt(c.i) && !reduced) {
-      // 有正式牌圖：金框正位牌面燒開，露出逆位牌面（黑框素材到位後即為黑殼）
       try { const done = await burnCard(c.face, artPath(c.i, false), artPath(c.i, true), fast ? 1100 : 1700, sparks); c.face.style.setProperty("--r", "125%"); done(); }
       catch (_) { c.face.style.setProperty("--r", "125%"); }
     } else await tween(fast ? 700 : 1100, p => { c.face.style.setProperty("--r", `${ease(p) * 125}%`); sparks(p); });
-    c.el.classList.remove("burning", "shudder"); setTimeout(() => stage.classList.remove("eye-narrow"), D(500));
+    c.el.classList.remove("burning", "shudder");
   }
-  // 牌面一露出，女祭司就開口（三張未齊，不下定論）；最後一張說完才降下總的神諭
-  const order = S.flipOrder.length, prevK = order ? S.flipOrder[order - 1] : -1; S.flipOrder.push(k);
-  const total = SPREADS[S.spread].positions.length, last = order === total - 1;
-  if (!c.rev && S.R.cards[k].score >= 1) { stage.classList.add("eye-warm"); setTimeout(() => stage.classList.remove("eye-warm"), D(1600)); }
-  const spoken = speak(revealLine(S.R, k, order, prevK), { hold: last ? 1300 : 900 }); c.spoken = spoken;
+  if (!c.rev && S.R.cards[k].score >= 1) stage.classList.add("eye-warm");
+  shown(); // 牌面露出：異象開始湧出
   // 抬起的牌平順降回原位，再收掉動畫（直接取消會讓牌瞬間跳回，看起來像抽搐）
   await c.el.animate([{ transform: tf(20, c.s * 1.12) }, { transform: tf(0, c.s) }], { duration: D(fast ? 260 : 380), easing: "cubic-bezier(.3,.7,.2,1)", fill: "forwards" }).finished;
   c.el.getAnimations().forEach(a => a.cancel()); put(c, c.x, c.y, 0, c.s); c.el.style.zIndex = 50 + k;
   const slot = slotsEl.children[k]; slot.querySelector(".nm").innerHTML = `${esc(CARDS[c.i][0])}<small>${c.rev ? "逆位" : "正位"}</small>`; slot.classList.add("named");
   S.flipped++;
-  if (last) { $("flipAll").hidden = true; hint.textContent = ""; }
-  else hint.textContent = "翻開下一張";
-  if (last) { await spoken; await oracle(); }
-  return spoken;
+  await spoken;
+  stage.classList.remove("entranced", "eye-narrow", "eye-warm");
+  if (S.phase !== "flip") return;
+  if (last) { await oracle(); return; }
+  S.speaking = false; armCards();
+  if (!S.autoFlip) hint.textContent = "翻開下一張";
 }
-// 全部翻開：一張一張來，每張都等女祭司把話說完
+// 全部翻開：一張一張來，每張都等神諭說完
 $("flipAll").addEventListener("click", async () => {
-  $("flipAll").hidden = true;
-  for (const c of S.cards.filter(c => c.picked)) { if (S.phase !== "flip") break; if (!c.flipped) await flip(c, true); else if (c.spoken) await c.spoken; }
+  if (S.speaking) return;
+  S.autoFlip = true; armCards();
+  for (const c of S.cards.filter(c => c.picked)) { if (S.phase !== "flip") break; if (!c.flipped) { await wait(400); await flip(c, true); } }
+  S.autoFlip = false;
 });
 
 // ---------------- 神諭：蛇眼亮起、逐字顯現 ----------------
@@ -550,13 +570,37 @@ function utter(text, ms = 70) {
   return wait(text.length * ms + 700);
 }
 // 揭牌時的話：比神諭小、像說話；新的話會蓋掉還沒說完的舊話
-function speak({ text, tail }, { ms = 42, hold = 900 } = {}) {
-  const my = ++speakToken, chars = [...text], tch = [...(tail || "")];
-  const span = (arr, off) => arr.map((ch, i) => `<span style="animation-delay:${D((off + i) * ms)}ms">${esc(ch)}</span>`).join("");
-  utterEl.classList.add("speech");
-  utterEl.innerHTML = `<span class="sp-main">${span(chars, 0)}</span>${tch.length ? `<span class="sp-tail">${span(tch, chars.length + 6)}</span>` : ""}`;
-  const T = D((chars.length + (tch.length ? tch.length + 6 : 0)) * ms + 700 + hold);
-  return new Promise(res => { const t0 = performance.now(); (function f() { if (speakToken !== my || performance.now() - t0 >= T) return res(); setTimeout(f, 120); })(); });
+// 出神的說話節奏：逐字浮現；「……」處停頓喘息，「。」稍停，「！」結尾的那一截是驚呼（字放大、發亮、畫面一震）。
+// 凶兆說得更慢。lead 先說，等 gate（牌面露出）才說異象，最後是回過神的一句。utter() 會打斷它。
+function speechHTML(str, ms, pause) {
+  const chars = [...str], out = []; let t = 0, seg = 0; const cries = [];
+  chars.forEach((ch, i) => {
+    if (ch === "\n") { out.push("<br>"); t += 300; seg = out.length; return; }
+    out.push({ ch, t }); t += ms;
+    if (ch === "…") { if (chars[i + 1] !== "…") t += pause; }
+    else if (ch === "。") t += 340; else if (ch === "，" || ch === "、") t += 160; else if (ch === "！") t += 300;
+    if ("…。，、！？".includes(ch)) {
+      if (ch === "！") { for (let j = seg; j < out.length; j++) if (typeof out[j] === "object") out[j].cry = true; const f = out.slice(seg).find(o => typeof o === "object"); if (f) cries.push(f.t); }
+      seg = out.length;
+    }
+  });
+  const html = out.map(o => typeof o === "string" ? o : `<span${o.cry ? ' class="cry"' : ""} style="animation-delay:${D(o.t)}ms">${esc(o.ch)}</span>`).join("");
+  return { html, end: t, cries };
+}
+async function speak(L, { gate = Promise.resolve(), hold = 1000 } = {}) {
+  const my = ++speakToken, alive = () => speakToken === my, ms = L.heavy ? 62 : 48, pause = L.heavy ? 680 : 500;
+  utterEl.classList.add("speech"); utterEl.classList.remove("fade");
+  utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead"></span><span class="sp-vis"></span></span><span class="sp-tail"></span>`;
+  const play = (sel, str) => {
+    if (!str || !alive()) return Promise.resolve();
+    const { html, end, cries } = speechHTML(str, ms, pause); utterEl.querySelector(sel).innerHTML = html;
+    cries.forEach(t => setTimeout(() => { if (!alive()) return; stage.classList.remove("tremor"); void stage.offsetWidth; stage.classList.add("tremor"); }, D(t + 120)));
+    return wait(end + 250);
+  };
+  await play(".sp-lead", L.lead); await gate; if (!alive()) return;
+  await wait(250); await play(".sp-vis", L.text); if (!alive()) return;
+  await wait(500); await play(".sp-tail", L.tail); if (!alive()) return;
+  await wait(hold);
 }
 async function oracle() {
   setPhase("oracle");

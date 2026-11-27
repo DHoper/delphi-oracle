@@ -84,6 +84,6 @@
 - 每日次數限制暫時關閉：`worker/wrangler.toml` 的 `QUOTA_OFF = "1"`，恢復改 "0" 再部署。
 - 全站稱呼求問者為「你」（不再用「汝」）；叩問為必填。
 
-- 揭牌台詞：`js/tarot/reveal.js`（每張牌的第一眼 GLIMPSE、牌位開場 LEAD、反應 react）。
+- 揭牌台詞：`js/tarot/reveal.js`。揭牌是「神諭湧現」：女祭司被神附身，斷續吐出異象（畫面上沒有女祭司，只有她的聲音）。GLIMPSE 為 22×正逆的異象，LEAD 為牌位（白話），onset 為被攫住的那一下，WAIT／relate 為回過神的一句。節奏在 `main.js` 的 `speechHTML()／speak()`：「……」停頓、「！」那一截為驚呼（放大＋畫面一震），凶兆說得慢；牌位一句在牌翻面時就說，異象等牌面露出才說；她說話時其他牌不能翻（輕抖），說完停一拍才再亮起。
 - 牌位白話小字：`js/tarot/data.js` 的 `SPREADS[*].plain`。
 - AI 說話規則改了（11-27 第 72、76 項）：`js/oracle-prompt.js` 需重新部署 Worker 才會在正式站完全生效；部署前，網站送出的解讀依據已附「說法提醒」欄位補上新規則。

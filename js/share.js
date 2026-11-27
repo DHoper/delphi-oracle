@@ -167,7 +167,7 @@ export async function renderShareCard(R, { shared = false, ai = "", question = "
   await fontsReady(allText(R, ai, question));
   const [bg, frame, divider, cornerTR, cornerBR] = await Promise.all(["assets/sanctum/temple-portrait.webp", "assets/ui/slot-frame.webp", "assets/ui/divider.webp", "assets/ui/corner-tr.webp", "assets/ui/corner-br.webp"].map(loadImg));
   const arts = await Promise.all(R.cards.map(c => (hasArt(c.id) ? loadImg(artPath(c.id, c.rev)) : null)));
-  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
+  const cv = document.createElement("canvas"); cv.width = W * 2; cv.height = H * 2; const ctx = cv.getContext("2d"); ctx.scale(2, 2); // 2 倍解析度
   background(ctx, bg, W, H);
   const cs = 190;
   if (cornerTR) { ctx.drawImage(cornerTR, W - cs - 26, 26, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerTR, -cs - 26, 26, cs, cs); ctx.restore(); }
@@ -229,14 +229,14 @@ export async function renderLongCard(R, { shared = false, ai = "", question = ""
   m.font = `400 31px ${BODY}`; const gl = gu.map(x => (x.t ? { h: x.h, lines: wrap(m, x.t, 880, 1) } : { h: x.h, lines: [] }));
   m.font = `400 29px ${BODY}`; const stories = R.cards.map(c => { const ep = EPIC[c.id], my = MYTH[c.id]; return ep ? { head: `${R.cards.length > 1 ? c.position + "・" : ""}${c.name}${c.rev ? "・逆" : ""}${my ? "　" + my[0] : ""}`, lines: wrap(m, ep[c.rev ? 1 : 0], 860, 1) } : null; }).filter(Boolean);
   // 兩段式：先在一張很高的暫存畫布上畫內容、記下實際高度，最後裁成剛好的長度再補頁尾（不靠估算，不會壓字）
-  const LH = 60, SLH = 48, GLH = 54;
-  const cv = document.createElement("canvas"); cv.width = W; cv.height = 15000; const ctx = cv.getContext("2d");
-  ctx.fillStyle = "#070508"; ctx.fillRect(0, 0, W, cv.height);
+  const LH = 60, SLH = 48, GLH = 54, cs = 180;
+  let g;
+  const body = (ctx, HH) => {
+  ctx.fillStyle = "#070508"; ctx.fillRect(0, 0, W, HH);
   if (bg) { const s = W / bg.width; ctx.drawImage(bg, 0, 0, W, bg.height * s); }
-  let g = ctx.createLinearGradient(0, 0, 0, 1935);
+  g = ctx.createLinearGradient(0, 0, 0, 1935);
   g.addColorStop(0, "rgba(7,5,8,.8)"); g.addColorStop(0.12, "rgba(7,5,8,.4)"); g.addColorStop(0.35, "rgba(7,5,8,.62)"); g.addColorStop(0.7, "rgba(7,5,8,.9)"); g.addColorStop(1, "rgba(7,5,8,1)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, 1935);
-  const cs = 180;
   if (cornerTR) { ctx.drawImage(cornerTR, W - cs - 24, 24, cs, cs); ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cornerTR, -cs - 24, 24, cs, cs); ctx.restore(); }
   ctx.textBaseline = "alphabetic"; ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 16;
   ctx.font = `700 64px ${DISP}`; ctx.fillStyle = goldFill(ctx, 90, 160); spaced(ctx, "神諭塔羅", W / 2, 150, 30);
@@ -286,9 +286,15 @@ export async function renderLongCard(R, { shared = false, ai = "", question = ""
       s.lines.forEach((l, k) => ctx.fillText(l, 110, y + k * SLH)); y += s.lines.length * SLH + 40;
     });
   }
+  return y;
+  };
   // 裁成剛好的長度，補上兩側細金框、下方月桂與頁尾
-  const H2 = Math.round(y + 330), out = document.createElement("canvas"); out.width = W; out.height = H2; const o = out.getContext("2d");
-  o.drawImage(cv, 0, 0, W, Math.min(H2, cv.height), 0, 0, W, Math.min(H2, cv.height));
+  const probe = document.createElement("canvas"); probe.width = probe.height = 1;
+  const H2 = Math.round(body(probe.getContext("2d"), 15000) + 330);
+  // 高解析度：最多 2 倍，總像素壓在 1600 萬以內（iOS Safari 畫布上限約 1670 萬）
+  const S = Math.max(1, Math.min(2, Math.sqrt(16e6 / (W * H2))));
+  const out = document.createElement("canvas"); out.width = Math.round(W * S); out.height = Math.round(H2 * S); const o = out.getContext("2d");
+  o.scale(S, S); body(o, H2);
   g = o.createLinearGradient(0, 0, W, 0); g.addColorStop(0, "rgba(0,0,0,.5)"); g.addColorStop(0.2, "rgba(0,0,0,0)"); g.addColorStop(0.8, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.5)");
   o.fillStyle = g; o.fillRect(0, 0, W, H2);
   o.strokeStyle = "rgba(201,163,91,.35)"; o.lineWidth = 1.5; o.strokeRect(40, 40, W - 80, H2 - 80); o.strokeStyle = "rgba(201,163,91,.18)"; o.strokeRect(52, 52, W - 104, H2 - 104);
@@ -381,15 +387,13 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
       await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]); return true;
     } catch (_) { return false; }
   }
-  const viaApp = intent => busy(async () => {
-    if (canFiles()) { await shareBoth(); return; }
-    const ok = await copyImage(); open(intent(await getLink()));
-    say(ok ? "長圖已複製，在對話或貼文中貼上即可" : "已開啟分享；長圖請先「存下長圖」再附上");
-  });
+  // 各平台一律以連結分享（連結會自動帶出這則神諭的圖卡）；連同圖片一起丟給 App 時，多數 App 會把連結吃掉
+  const viaApp = intent => busy(async () => { open(intent(await getLink())); say("已開啟分享"); });
   const actions = {
-    native: () => busy(async () => { if (canFiles()) await shareBoth(); else { const url = await getLink(); try { await navigator.share({ title: "神諭塔羅", text: text(), url }); } catch (e) { if (e && e.name !== "AbortError") say("無法開啟分享"); } } }),
+    native: () => busy(async () => { const url = await getLink(); try { await navigator.share({ title: "神諭塔羅", text: text(), url }); } catch (e) { if (e && e.name !== "AbortError") say("無法開啟分享"); } }),
+    shareimg: () => busy(async () => { await shareBoth(); }),
     copyimg: () => busy(async () => say((await copyImage()) ? "長圖已複製，可直接貼上" : "此瀏覽器無法複製圖片，請改用「存下長圖」")),
-    story: async () => { const cv = await renderShareCard(R, { shared, ai, question: withQ() ? question : "" }); const u = cv.toDataURL("image/jpeg", 0.9), a = document.createElement("a"); a.href = u; a.download = "oracle-tarot-story.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下限動版圖卡"); },
+    story: async () => { const cv = await renderShareCard(R, { shared, ai, question: withQ() ? question : "" }); const u = cv.toDataURL("image/jpeg", 0.93), a = document.createElement("a"); a.href = u; a.download = "oracle-tarot-story.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下限動版圖卡"); },
     save: () => { const a = document.createElement("a"); a.href = blobURL; a.download = "oracle-tarot.jpg"; document.body.appendChild(a); a.click(); a.remove(); say("已存下神諭長圖"); },
     line: () => viaApp(url => `https://line.me/R/share?text=${encodeURIComponent(text() + url)}`),
     facebook: () => viaApp(url => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`),
@@ -404,7 +408,7 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
   async function paint() {
     img.removeAttribute("src"); sheet.classList.add("busy");
     const cv = lastCanvas = await renderLongCard(R, { shared, ai, question: withQ() ? question : "" });
-    blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.88)); img.dataset.long = cv.height > 2200 ? "1" : "";
+    blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.93)); img.dataset.long = cv.height > 2200 ? "1" : "";
     if (blobURL) URL.revokeObjectURL(blobURL); blobURL = URL.createObjectURL(blob); img.src = blobURL;
     sheet.classList.remove("busy");
   }
@@ -414,13 +418,15 @@ export function createShareSheet({ audio, endpoint = CONFIG.AI_ENDPOINT } = {}) 
   return {
     async open(reading, c, opts = {}) {
       R = reading; code = c; ai = opts.ai || ""; question = opts.question || ""; shared = !!opts.shared; link = null;
-      if (qBox) { qBox.hidden = !question; if (qChk) qChk.checked = false; }
+      if (qBox) { qBox.hidden = !question; if (qChk) qChk.checked = true; }
       const { omen } = splitOracle(ai);
       pv.innerHTML = `<b>「${esc(omen || R.verdict.text)}」</b><span>${esc(excerpt(R, ai, 70))}</span>`;
       sheet.hidden = false; requestAnimationFrame(() => sheet.classList.add("open")); status.textContent = "";
       await paint(); getLink();
-      // 主按鈕：能分享檔案就是「分享圖片與連結」；只能分享文字時隱藏（改用下方各平台按鈕）；電腦上顯示「複製圖片」
-      const nb = sheet.querySelector('[data-act="native"]'); nb.hidden = !canFiles(); sheet.querySelector('[data-act="copyimg"]').hidden = canFiles() || !window.ClipboardItem;
+      // 主按鈕是「分享連結」（連結優先，會帶出圖卡）；手機另有「分享長圖」；電腦上顯示「複製長圖」
+      sheet.querySelector('[data-act="native"]').hidden = !navigator.share;
+      sheet.querySelector('[data-act="shareimg"]').hidden = !canFiles();
+      sheet.querySelector('[data-act="copyimg"]').hidden = canFiles() || !window.ClipboardItem;
       if (audio) audio.rustle();
     }
   };

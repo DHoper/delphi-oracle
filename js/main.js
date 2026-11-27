@@ -558,6 +558,21 @@ async function flip(c, fast = false) {
   S.speaking = false; armCards();
   if (!S.autoFlip) hint.textContent = "翻開下一張";
 }
+// 揭牌時點了牌以外的地方：女祭司在出神中低語幾句（不擋翻牌；連點太多次她會要人安靜）
+const IDLE = {
+  before: ["牌還閉著……等那人的手……", "煙在等……還沒有一張開口……", "……不是這裡……是牌……", "神在聽……可牌還沒翻開……"],
+  between: ["……還有牌在等著。", "話還沒說完……還沒……", "別急……那邊還沒開口……", "煙還沒散……還有……"],
+  hush: ["……噓。", "別擾了神……", "靜一點……祂在看……"]
+};
+let idleAt = 0, idleN = 0, idleI = 0;
+stage.addEventListener("click", e => {
+  if (S.phase !== "flip" || S.speaking || S.autoFlip) return;
+  if (e.target.closest(".card, button, a, header, .top, #flipAll, input, textarea")) return;
+  const now = performance.now(); if (now - idleAt < 1800) return;
+  idleN = now - idleAt < 6000 ? idleN + 1 : 0; idleAt = now;
+  const set = idleN >= 2 ? IDLE.hush : S.flipped ? IDLE.between : IDLE.before, text = set[idleI++ % set.length];
+  speak({ lead: "", text, tail: "" }, { hold: 1600 }).then(() => { if (S.phase === "flip" && !S.speaking && performance.now() - idleAt > 2500) utterEl.classList.add("fade"); });
+});
 // 全部翻開：一張一張來，每張都等神諭說完
 $("flipAll").addEventListener("click", async () => {
   if (S.speaking) return;

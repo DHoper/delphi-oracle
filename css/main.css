@@ -1011,3 +1011,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* 揭牌的話：斷行平均，句尾不會剩一兩個字掉到下一行 */
 .utter.speech .sp-lead,.utter.speech .sp-vis,.utter.speech .sp-tail,#utter.speech span{text-wrap:pretty}
 #utter.speech .sp-vis{text-wrap:balance}
+
+/* 逆位燒成黑殼那一刻的驚叫 */
+.utter.speech .sp-turn{display:block;color:#f0b49a;letter-spacing:.06em}
+.utter.speech .sp-turn:not(:empty){margin-bottom:.3em}
+.utter.speech .sp-turn span.cry{color:#ffd9c4;text-shadow:0 0 16px rgba(255,120,80,.7)}

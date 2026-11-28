@@ -527,6 +527,7 @@ async function flip(c, fast = false) {
   // 牌一翻過來，神諭就攫住了她：先說出往哪裡看；牌面完全露出後才說出異象
   let shown; const gate = new Promise(r => (shown = r));
   stage.classList.add("entranced"); if (line.heavy) { stage.classList.add("eye-narrow"); audio.hiss(); }
+  let turned = () => {}; if (line.turn) line.turnGate = new Promise(r => (turned = r));
   const spoken = speak(line, { gate, hold: last ? 1500 : 1100 });
   // 牌翻過來時整面是金光；光自牌心向外化開，露出牌圖，邊緣最後褪去
   fire.burst(c.x, c.y, 18, { up: 0.9, spread: 2.2, w: W * 0.9 });
@@ -536,7 +537,7 @@ async function flip(c, fast = false) {
   } else {
     // 逆位：巨蟒瞇眼，牌身一震，餘燼從牌心燒開成逆位牌圖，火星下墜
     await wait(fast ? 200 : 450);
-    stage.classList.add("eye-narrow"); c.el.classList.add("shudder", "burning"); audio.hiss();
+    stage.classList.add("eye-narrow"); c.el.classList.add("shudder", "burning"); audio.hiss(); turned();
     const sparks = p => { if (Math.random() < 0.55) fire.burst(c.x + (Math.random() - 0.5) * W * (0.3 + p), c.y + (Math.random() - 0.5) * Hh * (0.3 + p), 2, { down: true, spread: 1.2, hue: 12 }); };
     if (hasArt(c.i) && !reduced) {
       try { const done = await burnCard(c.face, artPath(c.i, false), artPath(c.i, true), fast ? 1100 : 1700, sparks); c.face.style.setProperty("--r", "125%"); done(); }
@@ -545,7 +546,7 @@ async function flip(c, fast = false) {
     c.el.classList.remove("burning", "shudder");
   }
   if (!c.rev && S.R.cards[k].score >= 1) stage.classList.add("eye-warm");
-  shown(); // 牌面露出：異象開始湧出
+  turned(); shown(); // 牌面露出：異象開始湧出（沒有正式牌圖時也確保驚叫已放行）
   // 抬起的牌平順降回原位，再收掉動畫（直接取消會讓牌瞬間跳回，看起來像抽搐）
   await c.el.animate([{ transform: tf(20, c.s * 1.12) }, { transform: tf(0, c.s) }], { duration: D(fast ? 260 : 380), easing: "cubic-bezier(.3,.7,.2,1)", fill: "forwards" }).finished;
   c.el.getAnimations().forEach(a => a.cancel()); put(c, c.x, c.y, 0, c.s); c.el.style.zIndex = 50 + k;
@@ -602,7 +603,7 @@ function speechHTML(str, ms, pause) {
 // 手機上畫面矮，話一長就會掉到畫面外：先把整段話排一次，放不下就把字縮小（最小 12px），留出底部按鈕的位置
 function fitSpeech(L) {
   utterEl.style.fontSize = "";
-  utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead">${esc(L.lead || "")}</span><span class="sp-vis">${esc(L.text || "")}</span></span><span class="sp-tail">${esc(L.tail || "").replace(/\n/g, "<br>")}</span>`;
+  utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead">${esc(L.lead || "")}</span><span class="sp-turn">${esc(L.turn || "")}</span><span class="sp-vis">${esc(L.text || "")}</span></span><span class="sp-tail">${esc(L.tail || "").replace(/\n/g, "<br>")}</span>`;
   // 手機瀏覽器的網址列會吃掉一截畫面：以實際看得到的高度為準；底下要留給「全部翻開」與「翻開下一張」
   const vv = window.visualViewport, visBottom = Math.min(stage.getBoundingClientRect().bottom, vv ? vv.offsetTop + vv.height : innerHeight);
   const hr = hint.getBoundingClientRect(), reserve = Math.max(64, visBottom - (hr.height ? hr.top : visBottom - 64)) + 12; // 底下留給「翻開下一張」
@@ -613,14 +614,17 @@ function fitSpeech(L) {
 async function speak(L, { gate = Promise.resolve(), hold = 1000 } = {}) {
   const my = ++speakToken, alive = () => speakToken === my, ms = L.heavy ? 62 : 48, pause = L.heavy ? 680 : 500;
   utterEl.classList.add("speech"); utterEl.classList.remove("fade"); fitSpeech(L);
-  utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead"></span><span class="sp-vis"></span></span><span class="sp-tail"></span>`;
+  utterEl.innerHTML = `<span class="sp-main"><span class="sp-lead"></span><span class="sp-turn"></span><span class="sp-vis"></span></span><span class="sp-tail"></span>`;
   const play = (sel, str) => {
     if (!str || !alive()) return Promise.resolve();
     const { html, end, cries } = speechHTML(str, ms, pause); utterEl.querySelector(sel).innerHTML = html;
     cries.forEach(t => setTimeout(() => { if (!alive()) return; stage.classList.remove("tremor"); void stage.offsetWidth; stage.classList.add("tremor"); }, D(t + 120)));
     return wait(end + 250);
   };
-  await play(".sp-lead", L.lead); await gate; if (!alive()) return;
+  await play(".sp-lead", L.lead);
+  // 逆位：等牌開始燒成黑殼的那一刻，驚叫出聲
+  if (L.turn) { await (L.turnGate || Promise.resolve()); if (!alive()) return; await play(".sp-turn", L.turn); }
+  await gate; if (!alive()) return;
   await wait(250); await play(".sp-vis", L.text); if (!alive()) return;
   await wait(500); await play(".sp-tail", L.tail); if (!alive()) return;
   await wait(hold);

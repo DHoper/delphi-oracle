@@ -1006,7 +1006,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* 取預兆：浮到火上的那一枚輕輕往火裡點頭，火同時旺起來，提示「往下投」；拖曳時不點頭 */
 .rite .omens button.focused i{animation:omenNod 1.4s ease-in-out infinite;box-shadow:0 0 0 1px rgba(243,212,139,.9),0 0 30px rgba(255,170,70,.85)}
 @keyframes omenNod{0%,100%{transform:translateY(0) scale(1.42)}50%{transform:translateY(14px) scale(1.42)}}
-@media (prefers-reduced-motion:reduce){.rite .omens button.focused i,.rite .omens button.focused.held i{animation:none}
+@media (prefers-reduced-motion:reduce){.rite .omens button.focused i,.rite .omens button.focused.held i{animation:none}}
 
 /* 揭牌的話：斷行平均，句尾不會剩一兩個字掉到下一行 */
 .utter.speech .sp-lead,.utter.speech .sp-vis,.utter.speech .sp-tail,#utter.speech span{text-wrap:pretty}
@@ -1016,3 +1016,19 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .utter.speech .sp-turn{display:block;color:#f0b49a;letter-spacing:.06em}
 .utter.speech .sp-turn:not(:empty){margin-bottom:.3em}
 .utter.speech .sp-turn span.cry{color:#ffd9c4;text-shadow:0 0 16px rgba(255,120,80,.7)}
+
+/* 桌機：抽牌提示放在牌位左側時寬一點，不要斷成「石／桌上」 */
+.hint.side{width:310px;margin-left:calc(var(--hx) - 310px);font-size:13px}
+/* 桌機：大圖與牌上的故事整組置中、字放大、遮罩加深；收起按鈕做成明顯的按鈕 */
+@media (min-aspect-ratio:11/10) and (min-width:900px){
+  .lightbox{background:rgba(4,3,5,.96);grid-template-columns:minmax(0,1fr);justify-items:center}
+  .lightbox figure{grid-template-columns:auto minmax(0,30em);gap:48px;justify-self:center}
+  .lightbox figcaption b{font-size:28px}
+  .lightbox figcaption small{font-size:13px}
+  .lb-myth{max-width:30em;padding:16px 2px 18px}
+  .lb-myth h4{font-size:17px;text-align:left}
+  .lb-myth p{font-size:17px;line-height:1.95}
+  .lb-myth .src{font-size:13px}
+  .lightbox .kw{font-size:13px}
+  .lightbox .share-close{grid-area:auto;grid-column:1;justify-self:center;margin-top:6px;padding:10px 26px;border:1px solid rgba(217,172,85,.4);border-radius:999px;font-size:14px;color:var(--gold2)}
+}

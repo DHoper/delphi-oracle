@@ -416,7 +416,7 @@ function ribbonLayout() {
   // 矮而寬的螢幕：牌位與牌列之間放不下提示，提示改放到牌位左側
   const side = room < 0.6 && W >= 900;
   hint.classList.toggle("side", side);
-  if (side) { const l = Math.min(...holes.map(r => r.left)) - st.left, mid = holes.reduce((a, r) => a + r.top + r.height / 2, 0) / holes.length - st.top; hint.style.setProperty("--hx", l - 36 + "px"); hint.style.setProperty("--hy", mid + "px"); }
+  if (side) { const l = Math.min(...holes.map(r => r.left)) - st.left, mid = holes.reduce((a, r) => a + r.top + r.height / 2, 0) / holes.length - st.top; hint.style.setProperty("--hx", l - 30 - holes[0].width * 0.12 + "px"); /* 牌框裝飾比牌位寬，提示要讓開 */ hint.style.setProperty("--hy", mid + "px"); }
   const sc = Math.max(0.5, Math.min(W < 600 ? 0.86 : 0.74, side ? (H - mg - sb - 14) / cs.h : room)), cw = cs.w * sc, ch = cs.h * sc, left = Math.max(10, (W - Math.min(W - 20, n * cw * 0.5 + cw)) / 2), step = (W - 2 * left - cw) / Math.max(1, n - 1);
   const y = H - ch * 0.5 - mg;
   hint.style.bottom = side ? "" : (H - y + ch * 0.5 + 14) + "px";
